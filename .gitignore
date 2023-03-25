@@ -37,3 +37,6 @@
 
 # Folder with my own notes on the project
 notes/
+
+#Do not upload data
+data/

@@ -200,7 +200,6 @@ int main(int argc, char* argv[])
         output.open(filename);
         for (q=q0; q < qf; q += dq)
         {
-            cout << q << endl;
             //Generate the initial conditions and relax the system
             initial_conditions(N, phi, kuramoto, r, psi);
             for (t=0; t < trelax; t += dt) step_relax(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi);
