@@ -1,3 +1,5 @@
+#---- GitHub C gitignore ---------
+
 # Prerequisites
 *.d
 
@@ -30,3 +32,8 @@
 *.exe
 *.out
 *.app
+
+# ------------------------
+
+# Folder with my own notes on the project
+notes/
