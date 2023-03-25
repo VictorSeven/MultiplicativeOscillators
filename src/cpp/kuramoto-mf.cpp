@@ -31,7 +31,7 @@
 
 //Select current mode
 #ifndef MODE
-#define MODE DIAGRAM 
+#define MODE SERIES 
 #endif // MODE
 
 
@@ -90,7 +90,7 @@ void step()
 {
     int i,j;
 
-    xy = vector<double>(2*ORDER, 0.0);
+    xy = vector<double>(1+2*ORDER, 0.0);
     double auxc, auxs, prevc, prevs, nextc, nexts;
 
     for (i=0; i < N; i++)
@@ -108,7 +108,7 @@ void step()
         xy[1+ORDER] += auxs;
 
         //Then compute all requested Kuramoto-Daido parameters
-        for (j=2; j < ORDER; j++)
+        for (j=2; j <= ORDER; j++)
         {
             //Use trigonometry to obtain sin(k*x) as a function of sin((k-1)x). Same with cosine
             nextc = auxc * prevc - auxs * prevs;
@@ -133,15 +133,19 @@ void step()
 void step_relax()
 {
     int i;
+    double auxc, auxs;
 
     for (i=0; i < N; i++)
     {
         //Simulation step using MF dynamics
         phi[i] += dt * (w + q * r * sin(psi - phi[i])) + sqdt * ran_g(gen) * s;
+
+        auxc = cos(phi[i]);
+        auxs = sin(phi[i]);
     }
 
     //Get the Kuramoto parameter
-    kuramoto = complex<double>(xy[1], xy[1+ORDER]) / (1.0 * N);
+    kuramoto = complex<double>(auxc, auxs) / (1.0 * N);
 
     //Update r and psi which are needed for MF
     r = abs(kuramoto);
@@ -158,8 +162,8 @@ int main(int argc, char* argv[])
         int i;
 
         //Diagram variables
-        double q0,qf,nq;
-        int dq;
+        double q0,qf,dq;
+        int nq;
 
         //Averages
         complex<double> kd;
@@ -196,6 +200,7 @@ int main(int argc, char* argv[])
         output.open(filename);
         for (q=q0; q < qf; q += dq)
         {
+            cout << q << endl;
             //Generate the initial conditions and relax the system
             initial_conditions();
             for (t=0; t < trelax; t += dt) step_relax();
@@ -215,7 +220,7 @@ int main(int argc, char* argv[])
                 avpsi2 += psi2pi*psi2pi;
 
                 //Get the average of KD parameters
-                for (i=1; i < ORDER; i++)
+                for (i=2; i <= ORDER; i++)
                 {
                     kd = complex<double>(xy[i], xy[i+ORDER]) / (1.0*N);
                     avkd[i] += kd; 
@@ -234,11 +239,10 @@ int main(int argc, char* argv[])
             output << q << " " << avr << " " << avr2 - avr*avr << " " << avpsi2 - avpsi * avpsi << " ";
 
             //Next do the same with KD parameters
-            for (i=1; i < ORDER; i++) 
+            for (i=2; i <= ORDER; i++) 
             {
                 avkd[i] /= nits;
-                avkd2[i] /= nits;
-                output << (avkd2[i] - avkd[i]*avkd[i]).real() << " " << (avkd2[i] - avkd[i]*avkd[i]).imag() << " ";
+                output << avkd[i].real() << " " << avkd[i].imag() << " ";
             }
             output << endl;
         }
@@ -283,7 +287,7 @@ int main(int argc, char* argv[])
             //Format: each row has the KD parameters at selected time. Even columns 0,2,4... have the real part, odd the imaginary
             if (i % 100 == 0) 
             {
-                for (j=1; j < ORDER; j++)
+                for (j=1; j <= ORDER; j++)
                 {
                     output << xy[j] / (1.0*N) << " " << xy[j+ORDER] / (1.0*N) << " "; 
                 }
