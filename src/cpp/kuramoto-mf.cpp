@@ -28,33 +28,17 @@
 #define SERIES 0
 #define DIAGRAM 1
 
-
 //Select current mode
 #ifndef MODE
-#define MODE SERIES 
+#define MODE DIAGRAM 
 #endif // MODE
 
 
 using namespace std;
 
-//Global variables
-int N = 5000; //Number of oscillators
-vector<double> phi; //Phase
-double w, s, q; //Parameters
-complex<double> kuramoto;
-double r, psi;  //Kuramoto parameters
-vector<double> xy; //Kuramoto Daido pairs
-
-//Simulation variables
-double tf, trelax;
-double t;
-double dt = 0.01;
-double sqdt = sqrt(dt);
 
 
-//Output
-ofstream output;
-string filename = "prueba";
+
 
 //Auxiliary stuff
 static const complex<double> I(0.0, 1.0); //Imaginary unit, always useful
@@ -63,7 +47,7 @@ uniform_real_distribution<double> ran_u(0.0, 1.0);
 normal_distribution<double> ran_g(0.0, 1.0);
 
 //Generate random initial conditions
-void initial_conditions()
+void initial_conditions(const int N, vector<double> &phi, complex<double> &kuramoto, double &r, double &psi)
 {
     int i;
     double x,y;
@@ -86,7 +70,7 @@ void initial_conditions()
 }
 
 //Step after relaxation
-void step()
+void step(const int N, const double dt, const double sqdt, const double w, const double q, const double s, vector<double> &phi, complex<double> &kuramoto, double &r, double &psi, vector<double> &xy)
 {
     int i,j;
 
@@ -130,7 +114,7 @@ void step()
 }
 
 //Step during relaxation: no computation of KD nor output, to make it fast
-void step_relax()
+void step_relax(const int N, const double dt, const double sqdt, const double w, const double q, const double s, vector<double> &phi, complex<double> &kuramoto, double &r, double &psi)
 {
     int i;
     double auxc, auxs;
@@ -155,6 +139,23 @@ void step_relax()
 //Main code
 int main(int argc, char* argv[])
 {
+    //Main simulation variables
+    int N = 5000; //Number of oscillators
+    vector<double> phi; //Phase
+    double w, s, q; //Parameters
+    complex<double> kuramoto;
+    double r, psi;  //Kuramoto parameters
+    vector<double> xy; //Kuramoto Daido pairs
+
+    //Simulation parameters 
+    double tf, trelax;
+    double t;
+    const double dt = 0.01;
+    const double sqdt = sqrt(dt);
+        
+    //Output
+    ofstream output;
+    string filename = "prueba";
 
     #if MODE==DIAGRAM //The program executes several times, to get several values of sigma
 
@@ -192,8 +193,7 @@ int main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
 
-        avkd = vector< complex<double> >(ORDER, 0.0);
-        avkd2 = vector< complex<double> >(ORDER, 0.0);
+        avkd = vector< complex<double> >(ORDER+2, 0.0);
         avr = avr2 = 0.0;
         avpsi = avpsi2 = 0.0;
 
@@ -202,13 +202,13 @@ int main(int argc, char* argv[])
         {
             cout << q << endl;
             //Generate the initial conditions and relax the system
-            initial_conditions();
-            for (t=0; t < trelax; t += dt) step_relax();
+            initial_conditions(N, phi, kuramoto, r, psi);
+            for (t=0; t < trelax; t += dt) step_relax(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi);
 
             //Make measurements of our observables
             for (t=0.0; t < tf; t += dt)
             {
-                step();
+                step(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi, xy);
 
                 //Average of Kuramoto parameter
                 avr += r;
@@ -224,7 +224,6 @@ int main(int argc, char* argv[])
                 {
                     kd = complex<double>(xy[i], xy[i+ORDER]) / (1.0*N);
                     avkd[i] += kd; 
-                    avkd2[i] += kd*kd;
                 }
             }
 
@@ -272,8 +271,8 @@ int main(int argc, char* argv[])
         }
 
         //Generate the initial conditions and relax the system
-        initial_conditions();
-        for (t=0; t < trelax; t += dt) step_relax();
+        initial_conditions(N, phi, kuramoto, r, psi);
+        for (t=0; t < trelax; t += dt) step_relax(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi);
 
 
         //Write temporal series while its done!
@@ -281,7 +280,7 @@ int main(int argc, char* argv[])
         i = 0;
         for (t=0.0; t < tf; t += dt)
         {
-            step();
+            step(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi, xy);
 
             //Write all Kuramoto-Daido from time to time
             //Format: each row has the KD parameters at selected time. Even columns 0,2,4... have the real part, odd the imaginary
