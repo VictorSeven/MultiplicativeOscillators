@@ -124,8 +124,8 @@ void step_relax(const int N, const double dt, const double sqdt, const double w,
         //Simulation step using MF dynamics
         phi[i] += dt * (w + q * r * sin(psi - phi[i])) + sqdt * ran_g(gen) * s;
 
-        auxc = cos(phi[i]);
-        auxs = sin(phi[i]);
+        auxc += cos(phi[i]);
+        auxs += sin(phi[i]);
     }
 
     //Get the Kuramoto parameter

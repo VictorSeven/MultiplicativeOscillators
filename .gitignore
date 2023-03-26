@@ -40,3 +40,6 @@ notes/
 
 #Do not upload data
 data/
+
+#Do not upload notebooks
+src/python/exploratory*
