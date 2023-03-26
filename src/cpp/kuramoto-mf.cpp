@@ -10,13 +10,6 @@
 #define FALSE 0
 #define TRUE 1
 
-//Random seed
-
-#ifndef SEED
-#define SEED 34534512312
-#endif // SEED
-
-
 //Order of the Kuramoto-Daido parameters
 #ifndef ORDER
 #define ORDER 50
@@ -42,7 +35,7 @@ using namespace std;
 
 //Auxiliary stuff
 static const complex<double> I(0.0, 1.0); //Imaginary unit, always useful
-mt19937 gen(SEED);
+mt19937 gen;
 uniform_real_distribution<double> ran_u(0.0, 1.0);
 normal_distribution<double> ran_g(0.0, 1.0);
 
@@ -167,6 +160,7 @@ int main(int argc, char* argv[])
         int nq;
 
         //Averages
+        int seed;
         complex<double> kd;
         double avr, avr2;
         double avpsi, avpsi2, psi2pi;
@@ -174,7 +168,7 @@ int main(int argc, char* argv[])
         vector< complex<double>  > avkd2; 
         double nits;
 
-        if (argc == 10)
+        if (argc == 11)
         {
             N = stoi(argv[1]);
             w = stod(argv[2]);
@@ -186,6 +180,8 @@ int main(int argc, char* argv[])
             trelax = stod(argv[7]);
             tf = stod(argv[8]);
             filename = string(argv[9]);
+            seed = stoi(argv[10]);
+            gen.seed(seed);
         }
         else
         {
@@ -253,7 +249,7 @@ int main(int argc, char* argv[])
         int i,j;
 
         //Get arguments
-        if (argc == 8)
+        if (argc == 9)
         {
             N = stod(argv[1]);
             w = stod(argv[2]);
@@ -262,6 +258,8 @@ int main(int argc, char* argv[])
             trelax = stod(argv[5]);
             tf = stod(argv[6]);
             filename = string(argv[7]);
+            seed = stoi(argv[8]);
+            gen.seed(seed);
         }
         else
         {

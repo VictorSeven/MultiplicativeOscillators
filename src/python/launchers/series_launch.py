@@ -25,7 +25,8 @@ for sim_index in range(nsimulations):
     for q in q_list:
         #Get the output path to the file and the list of arguments to the program
         output_path = f"{data_path}/series_{q:.2f}_{sim_offset + sim_index}"
-        param_string = "{N} {w} {s} {q} {trelax} {tf} {path}".format(q=q, path=output_path, **params)
+        seed = 456548 + 1289*sim_index*sim_index + 12345*sim_index 
+        param_string = "{N} {w} {s} {q} {trelax} {tf} {path} {seed}".format(q=q, path=output_path, **params)
 
         #Launch in local system or PROTEUS
         system(f"slanzarv --short --nomail bin/kuramoto_series.out {param_string}")

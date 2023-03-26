@@ -31,7 +31,8 @@ for sim_index in range(nsimulations):
     for part,(q0, qf, nq) in enumerate(zip(q0_list, qf_list, nq_list)):
         #Get the output path to the file and the list of arguments to the program
         output_path = f"{data_path}/diagram_{sim_offset + sim_index}_{part}"
-        param_string = "{N} {w} {s} {q0} {qf} {nq} {trelax} {tf} {path}".format(q0=q0, qf=qf, nq=nq, path=output_path, **params)
+        seed = 456548 + 1289*sim_index*sim_index + 12345*sim_index 
+        param_string = "{N} {w} {s} {q0} {qf} {nq} {trelax} {tf} {path} {seed}".format(q0=q0, qf=qf, nq=nq, path=output_path, seed=seed, **params)
 
         #Launch in local system or PROTEUS
         system(f"slanzarv --short --nomail bin/kuramoto_diagram.out {param_string}")
