@@ -43,3 +43,6 @@ data/
 
 #Do not upload notebooks
 src/python/exploratory*
+
+#Executables in the cluster are generated here. Keep them away
+src/python/launchers/bin
