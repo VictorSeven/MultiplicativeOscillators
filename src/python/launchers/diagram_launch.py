@@ -6,12 +6,13 @@ nsimulations = 100
 sim_offset = 0
 
 #Parameters for the system
+s2 = 0.1 #Location of critical point
 kd_order = 1
-params = {"N":100, "w":0.1, "s":1.0, "trelax":100.0, "tf":1000.0}
+params = {"N":100, "w":0.1, "s":np.sqrt(s2), "trelax":100.0, "tf":1000.0}
 
 #Divide our coupling in intervals with diverse number of simulations
 #If the list is [q0, q1, q2 ...] intervals will be [q0, q1], [q1, q2], etc
-q_intervals = [0.0, 0.7, 1.3, 2.0] 
+q_intervals = [0.0, 0.07, 0.13, 0.20] 
 nq_list = [10, 30, 10]
 
 #Expand the intervals

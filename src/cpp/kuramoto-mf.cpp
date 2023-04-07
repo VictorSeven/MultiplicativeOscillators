@@ -112,6 +112,7 @@ void step_relax(const int N, const double dt, const double sqdt, const double w,
     int i;
     double auxc, auxs;
 
+    auxc = auxs = 0.0;
     for (i=0; i < N; i++)
     {
         //Simulation step using MF dynamics
@@ -248,6 +249,7 @@ int main(int argc, char* argv[])
     #elif MODE==SERIES
 
         int i,j;
+        int seed;
 
         //Get arguments
         if (argc == 9)
