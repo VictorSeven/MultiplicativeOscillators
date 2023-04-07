@@ -190,17 +190,18 @@ int main(int argc, char* argv[])
         }
 
         avkd = vector< complex<double> >(ORDER+2, 0.0);
-        avr = avr2 = 0.0;
-        avpsi = avpsi2 = 0.0;
 
         output.open(filename);
         for (q=q0; q < qf; q += dq)
         {
+
             //Generate the initial conditions and relax the system
             initial_conditions(N, phi, kuramoto, r, psi);
             for (t=0; t < trelax; t += dt) step_relax(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi);
 
             //Make measurements of our observables
+            avr = avr2 = 0.0;
+            avpsi = avpsi2 = 0.0;
             for (t=0.0; t < tf; t += dt)
             {
                 step(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi, xy);
