@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
 
             //Write all Kuramoto-Daido from time to time
             //Format: each row has the KD parameters at selected time. Even columns 0,2,4... have the real part, odd the imaginary
-            if (i % 100 == 0) 
+            if (i % 1 == 0) 
             {
                 for (j=1; j <= ORDER; j++)
                 {
