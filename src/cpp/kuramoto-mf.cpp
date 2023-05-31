@@ -12,7 +12,7 @@
 
 //Order of the Kuramoto-Daido parameters
 #ifndef ORDER
-#define ORDER 50
+#define ORDER 10
 #endif // ORDER
 
 //Define integration type:
@@ -23,7 +23,7 @@
 
 //Select current mode
 #ifndef MODE
-#define MODE DIAGRAM 
+#define MODE SERIES 
 #endif // MODE
 
 
@@ -286,6 +286,7 @@ int main(int argc, char* argv[])
             //Format: each row has the KD parameters at selected time. Even columns 0,2,4... have the real part, odd the imaginary
             if (i % 1 == 0) 
             {
+                output << t << " ";
                 for (j=1; j <= ORDER; j++)
                 {
                     output << xy[j] / (1.0*N) << " " << xy[j+ORDER] / (1.0*N) << " "; 
