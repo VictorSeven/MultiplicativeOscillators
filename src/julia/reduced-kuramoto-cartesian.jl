@@ -135,3 +135,59 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true
     end
     return corr 
 end
+
+function compute_gamma(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true)
+    a = 0.5 * s2 / sys_size
+    dt = 0.01 
+    w = 0.01
+    sqdt = sqrt(dt) 
+
+    sampling = 100
+
+    old_x = Vector{Float64}(undef, nharm)
+    old_y = Vector{Float64}(undef, nharm)
+    x = Vector{Float64}(undef, nharm)
+    y = Vector{Float64}(undef, nharm)
+
+
+    corr = zeros(2*nharm, 2*nharm)
+
+    initial_conditions!(nharm, old_x, old_y)
+
+    for t=0:dt:t_thermal 
+        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+        old_x, old_y, x, y = x, y, old_x, old_y
+    end
+
+    avr = 0.0
+    avr2 = 0.0
+    nmeasures = 0
+
+    t = 0
+    nt = 0
+    while t < tf 
+        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+
+        if (nt % sampling == 0)
+            r = sqrt(x[1] + y[1]) 
+            avr += r 
+            avr2 += r*r
+            nmeasures += 1
+        end
+
+        old_x, old_y, x, y = x, y, old_x, old_y
+
+
+        t += dt
+        nt += 1
+    end
+
+    avr /= nmeasures
+    avr2 /= nmeasures
+
+    open(fpath, "w") do output 
+        write(output, avr2-avr*avr)
+    end
+
+    return corr 
+end

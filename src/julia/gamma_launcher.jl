@@ -4,9 +4,10 @@ include("reduced-kuramoto-cartesian.jl")
 
 const nharm = 10
 const t_thermal = 500.0
-const tf = 10000.0
+const tf = 100000.0
 
-qs = [0.07, 0.1, 0.12] #0.07 for small, 0.12 for big
+
+qs = LinRange(rc-eps, rc+eps, 100) 
 const sys_size = 100
 const s2 = 0.1
 use_detfs = true 

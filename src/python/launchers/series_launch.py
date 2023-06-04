@@ -7,10 +7,11 @@ sim_offset = 0
 
 #Parameters for the system
 kd_order = 10
-params = {"N":100, "w":0.1, "s":1.0, "trelax":100.0, "tf":1000.0}
+s2 = 0.1
+params = {"N":100, "w":0.1, "s":np.sqrt(s2), "trelax":100.0, "tf":1000.0}
 
 #Simulate series for different q values
-q_list = [0.7, 1.0, 1.3]
+q_list = [0.7, 1.3]
 
 #Make sure target folder for data exist. Classify them by N
 data_path = f"../../../data/series/series_{params['N']}"

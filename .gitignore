@@ -38,8 +38,9 @@
 # Folder with my own notes on the project
 notes/
 
-#Do not upload data
+#Do not upload data, nor graphs
 data/
+*.pdf
 
 #Do not upload notebooks
 src/python/exploratory*
