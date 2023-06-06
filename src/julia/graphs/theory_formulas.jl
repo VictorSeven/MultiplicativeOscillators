@@ -74,3 +74,14 @@ function integrate_full(w, q, s2; dt=0.01, tf=1000.0, ntrials=1, nharm=20)
 
     return avr/ntrials 
 end
+
+function check_angles(w, q, s2; dt=0.01, tf=1000.0, nharm=30)
+    angles = 2π*rand(100000)
+    oldz = [mean(exp.(im*angles*k)) for k=1:nharm]
+    z = Vector{ComplexF64}(undef, nharm)
+    for t=0.0:dt:tf 
+        full_system(nharm, w, q, s2, oldz, z, dt)
+        oldz, z = z, oldz 
+    end
+    return angle.(oldz) 
+end

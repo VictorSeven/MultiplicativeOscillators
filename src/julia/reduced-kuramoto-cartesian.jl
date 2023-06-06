@@ -60,7 +60,7 @@ function step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
     y[1] = old_y[1] + dt * dety + sqdt * xi[1+nharm]
 
     #Update all k from 2 to nharm-1
-    for k=2:nharm-1
+    @simd for k=2:nharm-1
         detx = -0.5*k*(k*s2*old_x[k] + 2*w*old_y[k] + q*old_x[1]*(old_x[k+1] - old_x[k-1]) + q*old_y[1]*(old_y[k-1] + old_y[k+1]))
         dety = 0.5*k*(-k*s2*old_y[k] + 2*w*old_x[k] + q*old_y[1]*(old_x[k+1] + old_x[k-1]) + q*old_x[1]*(old_y[k-1] - old_y[k+1]))
 
@@ -133,7 +133,30 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true
             nt += 1
         end
     end
-    return corr 
+    return abs(rk[1]) 
+end
+
+function compute_stat_r(nharm, tf, q, sys_size, s2)
+    a = 0.5 * s2 / sys_size
+    dt = 0.01 
+    w = 0.01
+    sqdt = sqrt(dt) 
+
+    old_x = Vector{Float64}(undef, nharm)
+    old_y = Vector{Float64}(undef, nharm)
+    x = Vector{Float64}(undef, nharm)
+    y = Vector{Float64}(undef, nharm)
+
+    corr = zeros(2*nharm, 2*nharm)
+
+    initial_conditions!(nharm, old_x, old_y)
+
+    for t=0:dt:tf
+        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+        old_x, old_y, x, y = x, y, old_x, old_y
+    end
+
+    return sqrt(old_x[1]^2 + old_y[1]^2)
 end
 
 function compute_gamma(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true)

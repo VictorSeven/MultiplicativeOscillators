@@ -16,7 +16,7 @@ function diff_random_angles(n_angles, its, nharms)
     k=collect(1:nharms)
     av_diff = zeros(nharms)
     for i=1:its 
-        phis = 2π*rand(n_angles)
+        phis = 2π * rand(n_angles)
         zk = [mean(exp.(im*phis*k)) for k=1:nharms]
         psi = angle.(zk)
         av_diff += angle_diff.(psi, k*psi[1])
@@ -43,14 +43,16 @@ function analyse_angle_recurrence(data_path, ax, label)
     xy = readdlm(data_path)
     nharms = (size(xy)[2] - 1) ÷ 2
 
-    z    = xy[:,2] .+ 1.0im .* xy[:,3]
+    z    = xy[:,2] + 1.0im*xy[:,3]
     psi1 = angle.(z)
 
     psidiff = Vector{Float64}(undef, nharms)
     psidiff[1] = 0.0
 
+    println(mean(abs.(z)))
+
     for k=2:nharms
-        z = xy[:,2*k] .+ 1.0im .* xy[:,2*k+1]
+        z = xy[:,2*k] + 1.0im*xy[:,2*k+1]
         psik = angle.(z)
         psidiff[k] = mean(angle_diff(psik, k*psi1))
     end
@@ -75,14 +77,15 @@ analyse_angle_recurrence(data_path, ax, "Kuramoto")
 #data_path = "../../../data/timeseries/time_micro_asyn_EXC_100_1"
 #analyse_angle_recurrence(data_path, ax, "Excitable Osc.")
 
-#scatter!(ax, k, diff_random_angles(100, 10000, 10), markersize=5, label="Random")
+k = collect(1:10)
+scatter!(ax, k, diff_random_angles(100, 10000, 10), markersize=5, label="Random")
 #scatter!(ax, k, diff_gaussian_angles(10000, 10000, 10), markersize=5, label="Gaussian")
 
-data_path = "../../../data/series_micro/size_100/series_long_0.2"
+data_path = "../../../data/series_micro/size_10000/series_long_0.07"
 analyse_angle_recurrence(data_path, ax, "Synchro")
 
 data_path = "../../../data/series_micro/size_10000/series_long_0.2"
-analyse_angle_recurrence(data_path, ax, "Synchro")
+#analyse_angle_recurrence(data_path, ax, "Synchro")
 
 hlines!(ax, π/2, color=:gray, linestyle=:dash, label=L"\pi/2")
 

@@ -74,6 +74,7 @@ void step(const int N, const double dt, const double sqdt, const double w, const
     {
         //Simulation step using MF dynamics
         phi[i] += dt * (w + q * r * sin(psi - phi[i])) + sqdt * ran_g(gen) * s;
+        phi[i] = fmod(phi[i], 2*M_PI);
 
         auxc = cos(phi[i]);
         auxs = sin(phi[i]);
@@ -117,6 +118,7 @@ void step_relax(const int N, const double dt, const double sqdt, const double w,
     {
         //Simulation step using MF dynamics
         phi[i] += dt * (w + q * r * sin(psi - phi[i])) + sqdt * ran_g(gen) * s;
+        phi[i] = fmod(phi[i], 2*M_PI);
 
         auxc += cos(phi[i]);
         auxs += sin(phi[i]);
@@ -295,7 +297,20 @@ int main(int argc, char* argv[])
             }
             i++;
         }
+
+        output << t << " ";
+        for (j=1; j <= ORDER; j++)
+        {
+            output << xy[j] / (1.0*N) << " " << xy[j+ORDER] / (1.0*N) << " "; 
+        }
+        output << endl;
         output.close();
+
+        output.open("phases");
+        for (i=0; i<N-1;i++) output << phi[i] << " ";
+        output << phi[N-1] << endl;
+        output.close();
+
     #endif
 
     return 0; 
