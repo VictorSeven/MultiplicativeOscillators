@@ -136,7 +136,7 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true
     return abs(rk[1]) 
 end
 
-function compute_stat_r(nharm, tf, q, sys_size, s2)
+function compute_stat_r(nharm, trelax, tf, q, sys_size, s2)
     a = 0.5 * s2 / sys_size
     dt = 0.01 
     w = 0.01
@@ -151,12 +151,25 @@ function compute_stat_r(nharm, tf, q, sys_size, s2)
 
     initial_conditions!(nharm, old_x, old_y)
 
-    for t=0:dt:tf
+    for t=0:dt:trelax
         step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
         old_x, old_y, x, y = x, y, old_x, old_y
     end
 
-    return sqrt(old_x[1]^2 + old_y[1]^2)
+    avr = 0.0
+    avr2 = 0.0
+    for t=0:dt:tf
+        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+        r1 = sqrt(old_x[1]^2 + old_y[1]^2)
+        avr += r1
+        avr2 += r1*r1 
+        old_x, old_y, x, y = x, y, old_x, old_y
+    end
+
+    avr /= tf/dt
+    avr2 /= tf/dt
+
+    return avr, avr2-avr*avr 
 end
 
 function compute_gamma(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true)

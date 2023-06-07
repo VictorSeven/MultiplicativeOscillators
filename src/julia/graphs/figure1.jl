@@ -35,7 +35,7 @@ function plot_thermodynamic_limit(axis)
     r2c[gammas .< 0.1] .= 0
     teogammas = LinRange(0.0, 0.2, 100)
     rtyul = vec(readdlm("../../../data/diagrams/theoretical/tyulkina"))    #integrate_tyulkina.(0.1, gammas, s2)
-    rtrue = vec(readdlm("../../../data/diagrams/theoretical/full_stoc_10")) #integrate_full.(0.1, gammas, s2)
+    rtrue = vec(readdlm("../../../data/diagrams/theoretical/amplitude_full")) #integrate_full.(0.1, gammas, s2)
     r   = r_oa(gammas, s2)
     lines!(axis, gammas, r6, label="6th harmonic")
     lines!(axis, gammas, r2c, label="3rd cumulant")

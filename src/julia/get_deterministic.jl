@@ -17,7 +17,21 @@ nsims = 50
 #r = integrate_full.(w, q, s2; ntrials=nsims)
 #writedlm("../../data/diagrams/theoretical/full_sys_$nharm", r)
 
+
 nharm = 10 
 nsims = 50
-r = compute_stat_r.(nharm, 1000.0, q, 100000, s2)
+tf = 1000.0
+trelax = 300.0
+r = compute_stat_r.(nharm, trelax, tf, q, 100000, s2)
 writedlm("../../data/diagrams/theoretical/full_stoc_$nharm", r)
+
+function check_angles_sto(w, q, s2; dt=0.01, tf=1000.0, nharm=30)
+    angles = 2π*rand(100000)
+    oldz = [mean(exp.(im*angles*k)) for k=1:nharm]
+    z = Vector{ComplexF64}(undef, nharm)
+    for t=0.0:dt:tf 
+        full_system(nharm, w, q, s2, oldz, z, dt)
+        oldz, z = z, oldz 
+    end
+    return angle.(oldz) 
+end
