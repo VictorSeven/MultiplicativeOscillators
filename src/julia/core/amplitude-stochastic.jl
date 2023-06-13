@@ -1,8 +1,7 @@
-using LinearAlgebra
-using Distributions
-
 module AmplitudeEquations
 export get_timeseries, phase_diagram 
+
+using LinearAlgebra, Distributions
 
 function get_corrs!(nharm, a, r, corr)
     for i=1:nharm
@@ -50,16 +49,16 @@ function step!(nharm, oldr, r, corr, w, q, s2, a, dt, sqdt, t)
     k = 1 #z[0]=1
     det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) 
     r[k] = oldr[k] + dt * det + sqdt * xi[k]
-    #r[k] = max(r[k], 0.0)
+    r[k] = max(r[k], 0.0)
     @simd for k=2:nharm-1
         det = 0.5*k*(q*oldr[1]*(oldr[k-1] - oldr[k+1]) -k*s2*oldr[k]) 
         r[k] = oldr[k] + dt * det + sqdt * xi[k]
-        #r[k] = max(r[k], 0.0)
+        r[k] = max(r[k], 0.0)
     end
     k = nharm #z[nharm+1]=0
     det = 0.5*k*(q*oldr[1]*oldr[k-1] - k*s2*oldr[k]) 
     r[k] = oldr[k] + dt * det + sqdt * xi[k]
-    #r[k] = max(r[k], 0.0)
+    r[k] = max(r[k], 0.0)
 end
 
 function initial_conditions!(nharm)
@@ -79,7 +78,7 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; dt=0.01, n
     old_r = Vector{Float64}(undef, nharm)
     r = Vector{Float64}(undef, nharm)
 
-    corr = zeros(2*nharm, 2*nharm)
+    corr = zeros(nharm, nharm)
 
     old_r = initial_conditions!(nharm)
 
@@ -122,7 +121,7 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
             old_r = Vector{Float64}(undef, nharm)
             r = Vector{Float64}(undef, nharm)
 
-            corr = zeros(2*nharm, 2*nharm)
+            corr = zeros(nharm, nharm)
 
             old_r = initial_conditions!(nharm)
 
@@ -141,9 +140,8 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
                 step!(nharm, old_r, r, corr, w, q, s2, a, dt, sqdt, t)
 
                 if (nt % sampling == 0)
-                    r = sqrt(x[1] + y[1]) 
-                    avr += r 
-                    avr2 += r*r
+                    avr += r[1] 
+                    avr2 += r[1]*r[1]
                     nmeasures += 1
                 end
 

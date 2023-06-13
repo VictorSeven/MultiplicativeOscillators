@@ -17,13 +17,12 @@ nsims = 10
 nharm = 50 
 nsims = 50
 #r = integrate_full.(w, q, s2; ntrials=nsims)
-#writedlm("../../data/diagrams/theoretical/full_sys_$nharm", r)
-
+#writedlm("../../data/diagrams/theoretical/deterministic_full_$nharm", r)
 
 nharm = 10 
 nsims = 50
 tf = 1000.0
-trelax = 300.0
+trelax = 500.0
 phase_diagram(nharm, trelax, tf, q[begin], q[end], nq, 1e7, s2, "../../data/diagrams/theoretical/full_system")
 
 function check_angles_sto(w, q, s2; dt=0.01, tf=1000.0, nharm=30)
