@@ -1,6 +1,9 @@
 using LinearAlgebra
 using Distributions
 
+module KuramotoCartesian
+export get_timeseries, phase_diagram
+
 function get_corrs!(nharm, a, x, y, corr)
     for i=1:nharm
         for j=1:i-1
@@ -91,13 +94,9 @@ function initial_conditions!(nharm, x, y)
     y .= r .* sin.(psi) 
 end
 
-function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true)
+function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; w=0.01, dt=0.01, nsample=10)
     a = 0.5 * s2 / sys_size
-    dt = 0.01 
-    w = 0.01
     sqdt = sqrt(dt) 
-    sampling = 0.1 
-    nsample = floor(sampling/dt)
 
     old_x = Vector{Float64}(undef, nharm)
     old_y = Vector{Float64}(undef, nharm)
@@ -136,94 +135,62 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true
     return abs(rk[1]) 
 end
 
-function compute_stat_r(nharm, trelax, tf, q, sys_size, s2)
+function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sampling=100, w=0.01, dt=0.01)
     a = 0.5 * s2 / sys_size
-    dt = 0.01 
-    w = 0.01
     sqdt = sqrt(dt) 
 
-    old_x = Vector{Float64}(undef, nharm)
-    old_y = Vector{Float64}(undef, nharm)
-    x = Vector{Float64}(undef, nharm)
-    y = Vector{Float64}(undef, nharm)
+    q_values = LinRange(q0, qf, nq)
 
-    corr = zeros(2*nharm, 2*nharm)
-
-    initial_conditions!(nharm, old_x, old_y)
-
-    for t=0:dt:trelax
-        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
-        old_x, old_y, x, y = x, y, old_x, old_y
-    end
-
-    avr = 0.0
-    avr2 = 0.0
-    for t=0:dt:tf
-        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
-        r1 = sqrt(old_x[1]^2 + old_y[1]^2)
-        avr += r1
-        avr2 += r1*r1 
-        old_x, old_y, x, y = x, y, old_x, old_y
-    end
-
-    avr /= tf/dt
-    avr2 /= tf/dt
-
-    return avr, avr2-avr*avr 
-end
-
-function compute_gamma(nharm, t_thermal, tf, q, sys_size, s2, fpath, detfs=true)
-    a = 0.5 * s2 / sys_size
-    dt = 0.01 
-    w = 0.01
-    sqdt = sqrt(dt) 
-
-    sampling = 100
-
-    old_x = Vector{Float64}(undef, nharm)
-    old_y = Vector{Float64}(undef, nharm)
-    x = Vector{Float64}(undef, nharm)
-    y = Vector{Float64}(undef, nharm)
-
-
-    corr = zeros(2*nharm, 2*nharm)
-
-    initial_conditions!(nharm, old_x, old_y)
-
-    for t=0:dt:t_thermal 
-        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
-        old_x, old_y, x, y = x, y, old_x, old_y
-    end
-
-    avr = 0.0
-    avr2 = 0.0
-    nmeasures = 0
-
-    t = 0
-    nt = 0
-    while t < tf 
-        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
-
-        if (nt % sampling == 0)
-            r = sqrt(x[1] + y[1]) 
-            avr += r 
-            avr2 += r*r
-            nmeasures += 1
-        end
-
-        old_x, old_y, x, y = x, y, old_x, old_y
-
-
-        t += dt
-        nt += 1
-    end
-
-    avr /= nmeasures
-    avr2 /= nmeasures
 
     open(fpath, "w") do output 
-        write(output, avr2-avr*avr)
+        for q in q_values
+            old_x = Vector{Float64}(undef, nharm)
+            old_y = Vector{Float64}(undef, nharm)
+            x = Vector{Float64}(undef, nharm)
+            y = Vector{Float64}(undef, nharm)
+
+
+            corr = zeros(2*nharm, 2*nharm)
+
+            initial_conditions!(nharm, old_x, old_y)
+
+            for t=0:dt:t_thermal 
+                step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+                old_x, old_y, x, y = x, y, old_x, old_y
+            end
+
+            avr = 0.0
+            avr2 = 0.0
+            nmeasures = 0
+
+            t = 0
+            nt = 0
+            while t < tf 
+                step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+
+                if (nt % sampling == 0)
+                    r = sqrt(x[1] + y[1]) 
+                    avr += r 
+                    avr2 += r*r
+                    nmeasures += 1
+                end
+
+                old_x, old_y, x, y = x, y, old_x, old_y
+
+
+                t += dt
+                nt += 1
+            end
+
+            avr /= nmeasures
+            avr2 /= nmeasures
+
+            write(output, "$q $avr $(avr2-avr*avr)\n")
+        end
     end
 
-    return corr 
+    return nothing 
 end
+
+
+end #Module end

@@ -1,5 +1,9 @@
 using Statistics
 
+module TheoryFormulas
+
+export r_6th, r_2th_cumulant, r_oa, finite_size_r, integrate_tyulkina, integrate_full
+
 function r_6th(q, s2)
     ratio = @. s2 * sqrt(2) / q
     root = @. sqrt(complex(51*q*q - 132 * q * s2 + 306*s2*s2)) 
@@ -84,4 +88,6 @@ function check_angles(w, q, s2; dt=0.01, tf=1000.0, nharm=30)
         oldz, z = z, oldz 
     end
     return angle.(oldz) 
+end
+
 end

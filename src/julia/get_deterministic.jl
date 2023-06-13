@@ -1,7 +1,9 @@
 using DelimitedFiles
 
-include("graphs/theory_formulas.jl")
-include("reduced-kuramoto-cartesian.jl")
+include("core/theory_formulas.jl")
+include("core/amplitude-stochastic.jl")
+
+using .AmplitudeEquations, .TheoryFormulas
 
 w = 0.1
 s2 = 0.1
@@ -22,8 +24,7 @@ nharm = 10
 nsims = 50
 tf = 1000.0
 trelax = 300.0
-r = compute_stat_r.(nharm, trelax, tf, q, 100000, s2)
-writedlm("../../data/diagrams/theoretical/full_stoc_$nharm", r)
+phase_diagram(nharm, trelax, tf, q[begin], q[end], nq, 1e7, s2, "../../data/diagrams/theoretical/full_system")
 
 function check_angles_sto(w, q, s2; dt=0.01, tf=1000.0, nharm=30)
     angles = 2π*rand(100000)
