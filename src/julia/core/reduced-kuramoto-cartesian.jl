@@ -1,13 +1,12 @@
-using LinearAlgebra
-using Distributions
-
 module KuramotoCartesian
 export get_timeseries, phase_diagram
+
+using LinearAlgebra, Distributions
 
 function get_corrs!(nharm, a, x, y, corr)
     for i=1:nharm
         for j=1:i-1
-            if i+j < nharm 
+            if i+j <= nharm 
                 xterm = x[i+j] 
                 yterm = y[i+j]
             else
@@ -20,7 +19,7 @@ function get_corrs!(nharm, a, x, y, corr)
             corr[j+nharm,i+nharm] =  j*i*a*(x[i-j] + xterm)
         end
 
-        if 2*i < nharm
+        if 2*i <= nharm
             corr[i,i] = i*i*a*(1.0 - x[2*i])
             corr[i+nharm,i] =  -i*i*a*y[2*i]
             corr[i+nharm,i+nharm] =  i*i*a*(1.0 + x[2*i])
@@ -135,7 +134,7 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; w=0.01, dt
     return abs(rk[1]) 
 end
 
-function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sampling=100, w=0.01, dt=0.01)
+function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sampling=100, w=0.1, dt=0.01)
     a = 0.5 * s2 / sys_size
     sqdt = sqrt(dt) 
 
@@ -169,7 +168,7 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
                 step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
 
                 if (nt % sampling == 0)
-                    r = sqrt(x[1] + y[1]) 
+                    r = sqrt(x[1]^2 + y[1]^2) 
                     avr += r 
                     avr2 += r*r
                     nmeasures += 1

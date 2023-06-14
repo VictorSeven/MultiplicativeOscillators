@@ -4,7 +4,7 @@ using Distributions
 function get_corrs!(nharm, a, r, corr)
     for i=1:nharm
         for j=1:i-1
-            if i+j < nharm
+            if i+j <= nharm
                 ipj = r[i+j]
             else
                 ipj = 0.0
@@ -12,7 +12,7 @@ function get_corrs!(nharm, a, r, corr)
             corr[j,i] = i*j*a*(r[i-j] - ipj)
         end 
 
-        if 2*i<nharm
+        if 2*i<=nharm
             corr[i,i] = i*i*a*(1.0 - r[2*i])
         else 
             corr[i,i] = i*i*a

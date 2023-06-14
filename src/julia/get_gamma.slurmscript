@@ -6,6 +6,6 @@
 #SBATCH --constraint=metis
 #SBATCH -c 1
 #SBATCH --mem 700
-#SBATCH --array=0-199
+#SBATCH --array=0-99
 
-srun julia diagram_launcher.jl 0.08 0.12 200 200 100 ../../data/gamma
+srun julia diagram_launcher.jl 0.08 0.12 100 100 100 ../../data/gamma/size10000
