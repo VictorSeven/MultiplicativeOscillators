@@ -55,8 +55,8 @@ function plot_gamma(axis)
     s2 = 0.1
     data_path = "../../../data/diagrams"
 
-    av_r = Vector{Float64}(undef, ngammas)
-    av_sus = Vector{Float64}(undef, ngammas)
+    av_r = zeros(ngammas) 
+    av_sus = zeros(ngammas) 
     gammas = Vector{Float64}(undef, ngammas)
 
 
