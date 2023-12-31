@@ -1,7 +1,7 @@
 module KuramotoCartesian
 export get_timeseries, phase_diagram
 
-using LinearAlgebra, Distributions
+using LinearAlgebra, Distributions, Random
 
 function get_corrs!(nharm, a, x, y, corr)
     for i=1:nharm
@@ -33,8 +33,9 @@ function get_corrs!(nharm, a, x, y, corr)
     corr .= Symmetric(corr, :L)
 end
 
-function ensure_corr!(corr, thres=1e-10, maxits=10)
-    good_corrs = isposdef(corr)
+function get_correlated_vars!(corr, xi; thres=1e-10, maxits=10)
+
+    good_corrs = isposdef!(corr)
     nits = 0
     while nits < maxits && !good_corrs 
         eigsys = eigen(corr)
@@ -44,15 +45,18 @@ function ensure_corr!(corr, thres=1e-10, maxits=10)
         good_corrs = !any(eigsys.values .< thres)
         nits += 1
     end
+
+    #Now corr contains the Cholesky matrix,so 
+    randn!(xi)
+    xi .= corr * xi
+    return nothing
 end
 
 
-function step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+function step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
     
     get_corrs!(nharm, a, old_x, old_y, corr)
-    ensure_corr!(corr)
-    mvn = MvNormal(zeros(2*nharm), corr) 
-    xi = rand(mvn, 1)
+    get_correlated_vars!(corr, xi)
 
     #Update k=1 so we can manually set old_r[0]=1 always
     detx = -0.5*(s2*old_x[1] + 2*w*old_y[1] + q*old_x[1]*(old_x[2] - 1.0) + q*old_y[1]*old_y[2])
@@ -107,7 +111,7 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; w=0.01, dt
     initial_conditions!(nharm, old_x, old_y)
 
     for t=0:dt:t_thermal 
-        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+        step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
         old_x, old_y, x, y = x, y, old_x, old_y
     end
 
@@ -115,7 +119,7 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; w=0.01, dt
         t = 0
         nt = 0
         while t < tf 
-            step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+            step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
             old_x, old_y, x, y = x, y, old_x, old_y
 
             if (nt % nsample == 0)
@@ -142,11 +146,13 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
 
 
     open(fpath, "w") do output 
+        old_x = Vector{Float64}(undef, nharm)
+        old_y = Vector{Float64}(undef, nharm)
+        x = Vector{Float64}(undef, nharm)
+        y = Vector{Float64}(undef, nharm)
+
+        xi = zeros(2*nharm)
         for q in q_values
-            old_x = Vector{Float64}(undef, nharm)
-            old_y = Vector{Float64}(undef, nharm)
-            x = Vector{Float64}(undef, nharm)
-            y = Vector{Float64}(undef, nharm)
 
 
             corr = zeros(2*nharm, 2*nharm)
@@ -154,7 +160,7 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
             initial_conditions!(nharm, old_x, old_y)
 
             for t=0:dt:t_thermal 
-                step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+                step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
                 old_x, old_y, x, y = x, y, old_x, old_y
             end
 
@@ -165,7 +171,7 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
             t = 0
             nt = 0
             while t < tf 
-                step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t)
+                step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
 
                 if (nt % sampling == 0)
                     r = sqrt(x[1]^2 + y[1]^2) 

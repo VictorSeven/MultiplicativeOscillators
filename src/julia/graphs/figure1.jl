@@ -38,7 +38,8 @@ function plot_thermodynamic_limit(axis)
     teogammas = LinRange(0.0, 0.2, 100)
     rtyul = vec(readdlm("../../../data/diagrams/theoretical/tyulkina"))    #integrate_tyulkina.(0.1, gammas, s2)
     #rtrue = vec(readdlm("../../../data/diagrams/theoretical/amplitude_full")) 
-    rtrue = readdlm("../../../data/diagrams/theoretical/stochastic_full_50")[:,1] #integrate_full.(0.1, gammas, s2)
+    #rtrue = readdlm("../../../data/diagrams/theoretical/amplitude_50_harms")[:,1] #integrate_full.(0.1, gammas, s2)
+    #rtrue = readdlm("../../../data/gamma/theoretical/sf_50harms")[:,1] #integrate_full.(0.1, gammas, s2)
     r   = r_oa(gammas, s2)
     lines!(axis, gammas, r6, label="6th harmonic")
     lines!(axis, gammas, r2c, label="3rd cumulant")
@@ -87,7 +88,7 @@ function plot_finite_sizes(axis)
         av_r /= nsims
         av_sus /= nsims
         scatter!(axis, gammas, av_r, markersize=4, color=colors[i], label=L"N=%$n")
-        r_th = finite_size_r(gammas, s2, n)
+        r_th = TheoryFormulas.finite_size_r(gammas, s2, n)
         lines!(axis, gammas, r_th, color=colors[i])
         i += 1
     end

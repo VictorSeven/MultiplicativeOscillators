@@ -27,12 +27,13 @@ nsims = 50
 r = zeros(100, 2)
 nsims = 100
 for i=0:nsims-1
-    data = readdlm("../../data/diagrams/full_system2/diagram_sim$(i)")
+    data = readdlm("../../data/gamma/sampling_fair_10harms/diagram_sim$(i)")
     global r[:,1] += data[:,2]
-    global r[:,2] += data[:,3]
+    global r[:,2] += data[:,3]#data[:,2].^2
 end
 r /= nsims 
-writedlm("../../data/diagrams/theoretical/stochastic_full2_$nharm", r)
+#r[:,2] -= r[:,1].^2
+writedlm("../../data/gamma/theoretical/sf_10harms", r)
 
 function check_angles_sto(w, q, s2; dt=0.01, tf=1000.0, nharm=30)
     angles = 2π*rand(100000)

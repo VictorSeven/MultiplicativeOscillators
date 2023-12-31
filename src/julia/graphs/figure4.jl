@@ -4,6 +4,21 @@ using DelimitedFiles
 using LsqFit
 
 include("style_funcs.jl")
+function moving_average(A::AbstractArray, m::Int)
+    out = similar(A)
+    R = CartesianIndices(A)
+    Ifirst, Ilast = first(R), last(R)
+    I1 = m÷2 * oneunit(Ifirst)
+    for I in R
+        n, s = 0, zero(eltype(out))
+        for J in max(Ifirst, I-I1):min(Ilast, I+I1)
+            s += A[J]
+            n += 1
+        end
+        out[I] = s/n
+    end
+    return out
+end
 
 function plot_variance(axis)
     nparts = 3
@@ -13,8 +28,9 @@ function plot_variance(axis)
     s2 = 0.1
     data_path = "../../../data/diagrams"
 
-    av_r = Vector{Float64}(undef, ngammas)
-    av_sus = Vector{Float64}(undef, ngammas)
+    av_r = zeros(ngammas) 
+    av_sus = zeros(ngammas) 
+    av_sus_realization = zeros(ngammas) 
     gammas = Vector{Float64}(undef, ngammas)
 
 
@@ -25,25 +41,44 @@ function plot_variance(axis)
             data = vcat(data, nextdata) 
         end
         av_r += data[:, 2] 
-        av_sus += data[:, 3] 
+        av_sus_realization += data[:,2].^2
+        av_sus += data[:,3]
         gammas = data[:, 1]
     end
     av_r /= nsims
     av_sus /= nsims
+    av_sus_realization /= nsims
+    av_sus_realization -= av_r .^ 2
 
-    var_theo = readdlm("../../../data/diagrams/theoretical/stochastic_full_50")[:,2] #integrate_full.(0.1, gammas, s2)
+    var_theo = readdlm("../../../data/gamma/theoretical/size100000/amplitude_50")[:,2] #integrate_full.(0.1, gammas, s2)
+    var_theo = moving_average(var_theo, 5)
+    teogammas = LinRange(0.095, 0.125, 100)
+    #scatter!(axis, teogammas, 2*var_theo, label="Full System", markersize=3)
+    lines!(axis, teogammas, sqrt(10)*var_theo, label="Full System")
+    scatter!(axis, gammas, av_sus, markersize=4, color=:gray, label="Simulation")
+    #scatter!(axis, gammas[2:end], 3.8*av_sus_realization[1:end-1], markersize=4, color=:orange, label="Simulation")
+    scatter!(axis, gammas, av_sus_realization, markersize=4, color=:orange, label="Simulation")
+
+    var_theo = readdlm("../../../data/gamma/theoretical/sf_50harms")[:,2] #integrate_full.(0.1, gammas, s2)
+    #var_theo = moving_average(var_theo, 5)
     teogammas = LinRange(0.0, 0.2, 100)
     #scatter!(axis, teogammas, 2*var_theo, label="Full System", markersize=3)
     lines!(axis, teogammas, var_theo, label="Full System")
-    scatter!(axis, gammas, av_sus, markersize=4, color=:gray, label="Simulation")
 
+    var_theo = readdlm("../../../data/gamma/theoretical/sf_10harms")[:,2] #integrate_full.(0.1, gammas, s2)
+    #var_theo = moving_average(var_theo, 5)
+    teogammas = LinRange(0.0, 0.2, 100)
+    #scatter!(axis, teogammas, 2*var_theo, label="Full System", markersize=3)
+    lines!(axis, teogammas, var_theo, label="Full System")
 
-    create_legend(axis, (-6.5, 2))
+    vlines!(axis, [0.11, 0.112])
+
+    #create_legend(axis, (-6.5, 2))
 
     axis.xlabel = L"J"
     axis.ylabel = L"\chi"
 
-    xlims!(axis, 0.095, 0.125)
+    xlims!(axis, 0.09, 0.13)
 
 end
 
@@ -55,8 +90,8 @@ function plot_gamma(axis)
     s2 = 0.1
     data_path = "../../../data/diagrams"
 
-    av_r = Vector{Float64}(undef, ngammas)
-    av_sus = Vector{Float64}(undef, ngammas)
+    av_r = zeros(ngammas) 
+    av_sus = zeros(ngammas) 
     gammas = Vector{Float64}(undef, ngammas)
 
 
@@ -73,11 +108,11 @@ function plot_gamma(axis)
     av_r /= nsims
     av_sus /= nsims
 
-    var_theo = readdlm("../../../data/diagrams/theoretical/stochastic_full_50")[:,2] #integrate_full.(0.1, gammas, s2)
-    teogammas = LinRange(0.0, 0.2, 100)
+    var_theo = readdlm("../../../data/gamma/theoretical/size100000/amplitude_50")[:,2] #integrate_full.(0.1, gammas, s2)
+    teogammas = LinRange(0.095, 0.125, 100)
     #var_theo = av_sus
 
-    gc = 0.11
+    gc = 0.115
 
     epsilon = (teogammas .- gc) / gc
     #epsilon = (gammas .- gc) / gc
@@ -86,10 +121,8 @@ function plot_gamma(axis)
     logvar = log.(abs.(var_theo[epsilon .> 0]))
     #var_theo = log.(abs.(av_sus[epsilon .> 0]))
     logepsilon = log.(epsilon[epsilon .> 0])
-    println(epsilon[epsilon .> 0])
-    println(epsilon[epsilon .< 0])
 
-    p=10
+    p=20
     logvar= logvar[begin:begin+p]
     logepsilon = logepsilon[begin:begin+p] 
 
