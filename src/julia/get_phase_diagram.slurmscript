@@ -8,4 +8,4 @@
 #SBATCH --mem 1500
 #SBATCH --array=0-99
 
-srun julia diagram_launcher.jl 0.0 0.2 100 100 10 ../../data/diagrams/theoretical/full_system
+srun julia diagram_launcher.jl 0.0 0.2 100 100 100 ../../data/diagrams/theoretical/sampling_fair_meso_10harms

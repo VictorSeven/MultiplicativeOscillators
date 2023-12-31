@@ -5,7 +5,7 @@
 #SBATCH --partition=short,metis
 #SBATCH --constraint=metis
 #SBATCH -c 1
-#SBATCH --mem 1500
-#SBATCH --array=0-99
+#SBATCH --mem 700
+#SBATCH --array=0-299
 
-srun julia diagram_launcher.jl 0.095 0.125 100 100 100 ../../data/gamma/size100000
+srun julia timeseries_launcher.jl

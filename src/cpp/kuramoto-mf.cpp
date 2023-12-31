@@ -171,6 +171,11 @@ int main(int argc, char* argv[])
         vector< complex<double>  > avkd2; 
         double nits;
 
+	//Do not measure at every timestep
+        const int sampling_time = int(1.0/dt);
+	int sampling_it = 0;
+	int nmeasurements = 0;
+
         if (argc == 11)
         {
             N = stoi(argv[1]);
@@ -205,29 +210,37 @@ int main(int argc, char* argv[])
             //Make measurements of our observables
             avr = avr2 = 0.0;
             avpsi = avpsi2 = 0.0;
+	    sampling_it = 0;
+	    nmeasurements = 0;
             for (t=0.0; t < tf; t += dt)
             {
                 step(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi, xy);
 
-                //Average of Kuramoto parameter
-                avr += r;
-                avr2 += r*r;
+		if (sampling_it % sampling_time == 0)
+		{
+			//Average of Kuramoto parameter
+			avr += r;
+			avr2 += r*r;
 
-                //Average of global phase
-                psi2pi = fmod(psi, M_2_PI);
-                avpsi += psi2pi; 
-                avpsi2 += psi2pi*psi2pi;
+			//Average of global phase
+			psi2pi = fmod(psi, M_2_PI);
+			avpsi += psi2pi; 
+			avpsi2 += psi2pi*psi2pi;
 
-                //Get the average of KD parameters
-                for (i=2; i <= ORDER; i++)
-                {
-                    kd = complex<double>(xy[i], xy[i+ORDER]) / (1.0*N);
-                    avkd[i] += kd; 
-                }
+			//Get the average of KD parameters
+			for (i=2; i <= ORDER; i++)
+			{
+			    kd = complex<double>(xy[i], xy[i+ORDER]) / (1.0*N);
+			    avkd[i] += kd; 
+			}
+			
+			nmeasurements++;
+		}
+		sampling_it++;	
             }
 
             //Finish averages for Kuramoto
-            nits = tf / dt;
+            nits = nmeasurements; 
             avr  /= nits;
             avr2 /= nits;
             avpsi /= nits;
