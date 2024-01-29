@@ -7,8 +7,8 @@ include("../core/theory_formulas.jl")
 using .TheoryFormulas
 
 function plot_thermodynamic_limit(axis)
-    nparts = 3
-    ngammas = 50
+    nparts = 4
+    ngammas = 40 
     nsims = 100
     n = 100000
     s2 = 0.1
@@ -22,30 +22,32 @@ function plot_thermodynamic_limit(axis)
     for index=1:nsims
         data = Matrix{Float64}(undef, 0, 4) 
         for part=1:nparts
-            nextdata = readdlm("$data_path/diagrams_$n/diagram_$(index-1)_$(part-1)")
+            nextdata = readdlm("$data_path/diagrams_$(n)_verylong/diagram_$(index-1)_$(part-1)")
+            #nextdata = readdlm("$data_path/diagrams_$(n)/diagram_$(index-1)_$(part-1)")
             data = vcat(data, nextdata) 
         end
-        av_r += data[:, 2] 
-        av_sus += data[:, 3] 
-        gammas = data[:, 1]
+        av_r += data[1:ngammas, 2] 
+        av_sus += data[1:ngammas, 3] 
+        gammas = data[1:ngammas, 1]
+        
     end
     av_r /= nsims
     av_sus /= nsims
-
-    r6  = r_6th(gammas, s2)
-    r2c = r_2th_cumulant(gammas, s2)
-    r2c[gammas .< 0.1] .= 0
+        
     teogammas = LinRange(0.0, 0.2, 100)
-    rtyul = vec(readdlm("../../../data/diagrams/theoretical/tyulkina"))    #integrate_tyulkina.(0.1, gammas, s2)
-    #rtrue = vec(readdlm("../../../data/diagrams/theoretical/amplitude_full")) 
-    #rtrue = readdlm("../../../data/diagrams/theoretical/amplitude_50_harms")[:,1] #integrate_full.(0.1, gammas, s2)
-    #rtrue = readdlm("../../../data/gamma/theoretical/sf_50harms")[:,1] #integrate_full.(0.1, gammas, s2)
-    r   = r_oa(gammas, s2)
-    lines!(axis, gammas, r6, label="6th harmonic")
-    lines!(axis, gammas, r2c, label="3rd cumulant")
-    lines!(axis, teogammas, rtyul, label="Tyulkina et al.")
+    r6  = r_6th(teogammas, s2)
+    r2c = r_2th_cumulant(teogammas, s2)
+    r2c[teogammas .< 0.1] .= 0
+
+    r   = r_oa(teogammas, s2)
+    datatyul = readdlm("dtyul")
+    rtrue = readdlm("../../../data/gamma/theoretical/sf_50harms")[:,1] #integrate_full.(0.1, gammas, s2)
+
+    lines!(axis, teogammas, r6, label="6th harmonic")
+    lines!(axis, teogammas, r2c, label="3rd cumulant")
+    lines!(axis, datatyul[:,1], datatyul[:,2], label="Tyulkina et al.")
     lines!(axis, teogammas, rtrue, label="Full System")
-    lines!(axis, gammas, r, label="Ott-Antonsen")
+    lines!(axis, teogammas, r, label="Ott-Antonsen")
 
     scatter!(axis, gammas, av_r, markersize=4, color=:gray, label="Simulation")
 

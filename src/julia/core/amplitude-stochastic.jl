@@ -73,10 +73,10 @@ function initial_conditions!(nharm, r)
     return nothing
 end
 
-function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; dt=0.01, nsample=10)
+function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01, nsample=10)
     a = 0.5 * s2 / sys_size
     sqdt = sqrt(dt) 
-    zeronharm = zeros(nharm)
+    xi = zeros(nharm)
 
     old_r = Vector{Float64}(undef, nharm)
     r = Vector{Float64}(undef, nharm)
@@ -102,13 +102,13 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; dt=0.01, n
                 for k=1:nharm-1
                     write(output, "$(r[k]) ")
                 end
-                write(output, "$(r[k])\n")
+                write(output, "$(r[nharm])\n")
             end
             t += dt
             nt += 1
         end
     end
-    return abs(rk[1]) 
+    return abs(r[1]) 
 end
 
 

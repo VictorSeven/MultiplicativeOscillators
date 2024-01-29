@@ -47,3 +47,6 @@ src/python/exploratory*
 
 #Executables in the cluster are generated here. Keep them away
 src/python/launchers/bin
+
+#VScode
+.vscode

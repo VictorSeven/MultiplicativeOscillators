@@ -23,9 +23,10 @@
 
 //Select current mode
 #ifndef MODE
-#define MODE SERIES 
+#define MODE DIAGRAM 
 #endif // MODE
 
+#define PI2 M_PI*2
 
 using namespace std;
 
@@ -51,7 +52,7 @@ void initial_conditions(const int N, vector<double> &phi, complex<double> &kuram
     x = y = 0.0;
     for (i=0; i < N; i++)
     {
-        phi[i] = ran_u(gen) * 6.2838;
+        phi[i] = ran_u(gen) * PI2;
         x += cos(phi[i]);
         y += sin(phi[i]);
     }
@@ -74,7 +75,7 @@ void step(const int N, const double dt, const double sqdt, const double w, const
     {
         //Simulation step using MF dynamics
         phi[i] += dt * (w + q * r * sin(psi - phi[i])) + sqdt * ran_g(gen) * s;
-        phi[i] = fmod(phi[i], 2*M_PI);
+        phi[i] = fmod(phi[i], PI2);
 
         auxc = cos(phi[i]);
         auxs = sin(phi[i]);
@@ -118,7 +119,7 @@ void step_relax(const int N, const double dt, const double sqdt, const double w,
     {
         //Simulation step using MF dynamics
         phi[i] += dt * (w + q * r * sin(psi - phi[i])) + sqdt * ran_g(gen) * s;
-        phi[i] = fmod(phi[i], 2*M_PI);
+        phi[i] = fmod(phi[i], PI2);
 
         auxc += cos(phi[i]);
         auxs += sin(phi[i]);
@@ -173,8 +174,8 @@ int main(int argc, char* argv[])
 
 	//Do not measure at every timestep
         const int sampling_time = int(1.0/dt);
-	int sampling_it = 0;
-	int nmeasurements = 0;
+        int sampling_it = 0;
+        int nmeasurements = 0;
 
         if (argc == 11)
         {
@@ -200,46 +201,53 @@ int main(int argc, char* argv[])
         avkd = vector< complex<double> >(ORDER+2, 0.0);
 
         output.open(filename);
+
+        //The first time, generate initial conditions and let the system relax
+        //Relaxation time is set at 75% for the first time. 
+        //The remaining 25% is done in the loop, to ensure total relaxation 
+        initial_conditions(N, phi, kuramoto, r, psi);
+        for (t=0; t < 0.75*trelax; t += dt) step_relax(N, dt, sqdt, w, q0, s, phi, kuramoto, r, psi);
+
         for (q=q0; q < qf; q += dq)
         {
-
-            //Generate the initial conditions and relax the system
-            initial_conditions(N, phi, kuramoto, r, psi);
-            for (t=0; t < trelax; t += dt) step_relax(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi);
+            //Use the final configuration of the last state as initial conditions
+            //so relaxation time can be shorter (e.g., the 25%)
+            for (t=0; t < 0.25*trelax; t += dt) step_relax(N, dt, sqdt, w, q0, s, phi, kuramoto, r, psi);
 
             //Make measurements of our observables
             avr = avr2 = 0.0;
             avpsi = avpsi2 = 0.0;
-	    sampling_it = 0;
-	    nmeasurements = 0;
+	        sampling_it = 0;
+	        nmeasurements = 0;
             for (t=0.0; t < tf; t += dt)
             {
                 step(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi, xy);
 
-		if (sampling_it % sampling_time == 0)
-		{
-			//Average of Kuramoto parameter
-			avr += r;
-			avr2 += r*r;
+                if (sampling_it % sampling_time == 0)
+                {
+                    //Average of Kuramoto parameter
+                    avr += r;
+                    avr2 += r*r;
 
-			//Average of global phase
-			psi2pi = fmod(psi, M_2_PI);
-			avpsi += psi2pi; 
-			avpsi2 += psi2pi*psi2pi;
+                    //Average of global phase
+                    psi2pi = fmod(psi, PI2);
+                    avpsi += psi2pi; 
+                    avpsi2 += psi2pi*psi2pi;
 
-			//Get the average of KD parameters
-			for (i=2; i <= ORDER; i++)
-			{
-			    kd = complex<double>(xy[i], xy[i+ORDER]) / (1.0*N);
-			    avkd[i] += kd; 
-			}
-			
-			nmeasurements++;
-		}
-		sampling_it++;	
+                    //Get the average of KD parameters
+                    for (i=2; i <= ORDER; i++)
+                    {
+                        kd = complex<double>(xy[i], xy[i+ORDER]) / (1.0*N);
+                        avkd[i] += kd; 
+                    }
+                    
+                    nmeasurements++;
+                }
+                sampling_it++;	
             }
 
             //Finish averages for Kuramoto
+            //cout << nmeasurements << endl;
             nits = nmeasurements; 
             avr  /= nits;
             avr2 /= nits;
@@ -258,6 +266,7 @@ int main(int argc, char* argv[])
             output << endl;
         }
         output.close();
+        cout << nmeasurements << endl;
 
 
     //Time series mode!
@@ -287,6 +296,7 @@ int main(int argc, char* argv[])
 
         //Generate the initial conditions and relax the system
         initial_conditions(N, phi, kuramoto, r, psi);
+        
         for (t=0; t < trelax; t += dt) step_relax(N, dt, sqdt, w, q, s, phi, kuramoto, r, psi);
 
 

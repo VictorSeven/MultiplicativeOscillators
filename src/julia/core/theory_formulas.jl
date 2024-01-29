@@ -1,6 +1,6 @@
-using Statistics
-
 module TheoryFormulas
+
+using Statistics
 
 export r_6th, r_2th_cumulant, r_oa, finite_size_r, integrate_tyulkina, integrate_full
 
@@ -61,6 +61,57 @@ function integrate_tyulkina(w, q, s2; dt=0.01, tf=1000.0, ntrials=10)
     end
 
     return avr/ntrials 
+end
+
+function integrate_tyulkina_simple(w, q, s2; dt=0.01, n=100000, tol=1e-4)
+    angles = 2π*rand(n)
+    oldz = mean(exp.(im*angles))
+    z2 = mean(exp.(2*im*angles))
+    oldx = z2 - oldz.^2  
+    rnew = abs(oldz)
+
+    eps = 10*tol
+    z = 0.0+0.0im 
+    for i=1:500000
+    #while eps > tol
+        z, x = tyulkina(w, q, s2, oldz, oldx, dt)
+        #rold = rnew
+        #rnew = abs(z)
+        #eps = abs((rnew-rold)/rnew)
+        oldz, oldx = z, x
+    #end
+    end
+
+    return abs(oldz)
+end
+
+function diagram_tyulkina(q0, qf, nq, w, s2, path; tol=1e-4)
+    open(path, "w") do output
+        for q in LinRange(q0, qf, nq)
+            r = integrate_tyulkina_simple(w, q, s2; tol=tol)
+            write(output, "$q $r\n")
+        end
+    end
+end
+
+function timeseries_tyulkina(w, q, s2, outputpath; dt=0.01, tf=1000.0)
+    angles = 2π*rand(100000)
+    oldz = mean(exp.(im*angles))
+    z2 = mean(exp.(2*im*angles))
+    oldx = z2 - oldz.^2  
+
+    z = 0.0
+    nits = 0
+    open(outputpath, "w") do output
+        for t=0.0:dt:tf 
+            z, x = tyulkina(w, q, s2, oldz, oldx, dt)
+            oldz, oldx = z, x
+            if nits%10==0
+                write(output, "$t $(abs(oldz))\n")
+            end
+            nits += 1
+        end
+    end
 end
 
 function integrate_full(w, q, s2; dt=0.01, tf=1000.0, ntrials=1, nharm=20)

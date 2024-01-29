@@ -8,19 +8,21 @@ sim_offset = 0
 #Parameters for the system
 s2 = 0.1 #Location of critical point
 kd_order = 1
-params = {"N":100000, "w":0.1, "s":np.sqrt(s2), "trelax":500.0, "tf":1000.0}
+params = {"N":100000, "w":0.1, "s":np.sqrt(s2), "trelax":4000.0, "tf":15000.0}
 
 #Divide our coupling in intervals with diverse number of simulations
 #If the list is [q0, q1, q2 ...] intervals will be [q0, q1], [q1, q2], etc
-q_intervals = [0.0, 0.07, 0.13, 0.20] 
-nq_list = [10, 30, 10]
+#q_intervals = [0.0, 0.07, 0.13, 0.20] 
+#nq_list = [10, 30, 10]
+q_intervals = [0.0, 0.07, 0.1, 0.13, 0.2]
+nq_list = [10, 10, 10, 10]
 
 #Expand the intervals
 q0_list = [q for q in q_intervals[:-1]]
 qf_list = [q for q in q_intervals[1:]]
 
 #Make sure target folder for data exist. Classify them by N
-data_path = f"../../../data/diagrams/diagrams_{params['N']}_2"
+data_path = f"../../../data/diagrams/diagrams_verylong"
 system(f"mkdir -p {data_path}")
 
 #Compile code
@@ -36,5 +38,5 @@ for sim_index in range(nsimulations):
         param_string = "{N} {w} {s} {q0} {qf} {nq} {trelax} {tf} {path} {seed}".format(q0=q0, qf=qf, nq=nq, path=output_path, seed=seed, **params)
 
         #Launch in local system or PROTEUS
-        system(f"slanzarv --short --nomail bin/kuramoto_diagram.out {param_string}")
+        system(f"slanzarv --nomail bin/kuramoto_diagram.out {param_string}")
         #system(f"./bin/kuramoto_diagram.out {param_string}")
