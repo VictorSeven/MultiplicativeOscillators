@@ -1,14 +1,15 @@
-include("core/amplitude-stochastic.jl")
+include("../core/amplitude-stochastic.jl")
 
 using .AmplitudeEquations
 
 #Parameters
-nharm = 10
-t_thermal = 500.0
-tf = 1000.0
+nharm = 30
+t_thermal = 5000.0
+tf = 5000.0
 sys_size = 100000
 s2 = 0.1
 
+#Get the program ID from Slurms's JobArray
 task_id = parse(Int, ENV["SLURM_ARRAY_TASK_ID"]) 
 
 #  Get program parameters
@@ -17,7 +18,7 @@ qf = parse(Float64, ARGS[2])
 nq = parse(Int64,   ARGS[3])
 nsims = parse(Int64,ARGS[4]) #Total number of launched simulations
 nrepetitions = parse(Int64,ARGS[5]) 
-path = ARGS[6]
+path = ARGS[6] #Where data will be stored
 
 #Get the dq and number of simulations we have to make
 n_sims_per_program = nq ÷ nsims
@@ -27,14 +28,11 @@ dq = (qf-q0)/nq
 q0_sim = q0 + task_id*n_sims_per_program*dq
 qf_sim = q0 + ((task_id+1)*n_sims_per_program-1)*dq
 
-#Where data will be stored
-#path = "../../data/gamma"
-
 #Run all the simulations
 try 
     for index=0:nrepetitions
         filename = "$(path)/diagram_sim$(index)_part$(task_id)"
-        phase_diagram(nharm, t_thermal, tf, q0_sim, qf_sim, n_sims_per_program, sys_size, s2, filename; sampling=1)
+        phase_diagram(nharm, t_thermal, tf, q0_sim, qf_sim, n_sims_per_program, sys_size, s2, filename; sampling=100)
     end
 catch e
     println(e)
