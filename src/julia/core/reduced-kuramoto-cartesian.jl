@@ -5,7 +5,7 @@ model using Cartesian coordinates
 module KuramotoCartesian
 export get_timeseries, phase_diagram
 
-using LinearAlgebra, Distributions, Random
+using LinearAlgebra, Distributions, Random, NearestCorrelationMatrix
 
 """
     get_corrs!(nharm::Int, a::Float64, x::Vector, y::Vector, corr::Matrix)
@@ -16,6 +16,7 @@ in Cartesian coordinates `x` and `y`.
 """
 function get_corrs!(nharm, a, x, y, corr)
     #Fill half of the matrix (a corr matrix is symmetric)
+    d = Vector{Float64}(undef, 2*nharm)
     for i=1:nharm
         for j=1:i-1
             #Closure condition. All harmonics larger than nharm are 0
@@ -23,31 +24,65 @@ function get_corrs!(nharm, a, x, y, corr)
                 xterm = x[i+j] 
                 yterm = y[i+j]
             else
-                xterm = 0.0 
-                yterm = 0.0
+                z1 = (x[1] + y[1]*im)^(i+j)
+                xterm = real(z1) 
+                yterm = imag(z1)
             end
 
             #Matrix element
-            corr[j,i] = j*i*a*(x[i-j] - xterm)
-            corr[j+nharm,i] = j*i*a*(y[i-j] - yterm)
-            corr[j+nharm,i+nharm] =  j*i*a*(x[i-j] + xterm)
+            corr[j,i] = j*i*(x[i-j] - xterm)
+            corr[j,i+nharm] = j*i*(-y[i-j] - yterm)
+            corr[j+nharm,i+nharm] =  j*i*(x[i-j] + xterm)
         end
 
         #Fill the diagonal
-        if 2*i <= nharm
-            corr[i,i] = i*i*a*(1.0 - x[2*i])
-            corr[i+nharm,i] =  -i*i*a*y[2*i]
-            corr[i+nharm,i+nharm] =  i*i*a*(1.0 + x[2*i])
+        if 2*i <= nharm 
+            xterm = x[2*i] 
+            yterm = y[2*i]
         else
-            corr[i,i] = i*i*a
-            corr[i+nharm,i] = 0.0 
-            corr[i+nharm,i+nharm] =  i*i*a
+            z1 = (x[1] + y[1]*im)^(2*i)
+            xterm = real(z1) 
+            yterm = imag(z1)
         end
 
+        corr[i,i] = i*i*(1.0 - xterm)
+        corr[i,i+nharm] =  -i*i*yterm
+        corr[i+nharm,i+nharm] =  i*i*(1.0 + xterm)
+        d[i] = 1/sqrt(corr[i,i])
+        d[i+nharm] = 1/sqrt(corr[i+nharm,i+nharm])
     end
 
     #Enforce symmetry
-    corr .= Symmetric(corr, :L)
+    corr .= Diagonal(d)*corr*Diagonal(d) 
+    corr .= Symmetric(corr)
+end
+
+function get_corrs_oa!(nharm, a, x, y, corr)
+    #Fill half of the matrix (a corr matrix is symmetric)
+    d = Vector{Float64}(undef, 2*nharm)
+    z = x[1] + y[1]*im
+    zoa = [z^k for k=1:2*nharm]
+    for i=1:nharm
+        for j=1:i-1
+            xp, yp = reim(zoa[i+j])
+            xm, ym = reim(zoa[i-j])
+
+            corr[j,i] = j*i*(xm - xp)
+            corr[j,i+nharm] = j*i*(-ym - yp)
+            corr[j+nharm,i+nharm] =  j*i*(xm + xp)
+        end
+        x2i, y2i = reim(zoa[2*i])
+
+        corr[i,i] = i*i*(1.0 - x2i)
+        corr[i,i+nharm] =  -i*i*y2i
+        corr[i+nharm,i+nharm] =  i*i*(1.0 + x2i)
+        d[i] = 1/sqrt(corr[i,i])
+        d[i+nharm] = 1/sqrt(corr[i+nharm,i+nharm])
+    end
+
+    #Enforce symmetry
+    corr .= Diagonal(d)*corr*Diagonal(d) 
+    corr .= Symmetric(corr)
 end
 
 """
@@ -59,28 +94,27 @@ eigenvalues smaller than `thres` to `thres` (ensures positive definite) and symm
 after eigenvalues are capped. The check is repeated after symmetrization, for a total of
 `maxits` iterations.
 """
-function get_correlated_vars!(corr, xi; thres=1e-10, maxits=10)
+function get_correlated_vars!(corr, a, t, xi)
     #Is our matrix positive definite? 
-    #Check and overwrite corr with Cholesky decomposition
-    good_corrs = isposdef!(corr)
-    nits = 0
-    #If not,
-    while nits < maxits && !good_corrs 
-        #Compute the eigenvalues 
-        eigsys = eigen(corr)
-        #Cap eigenvalues to the threshold and rewrite the matrix in our basis
-        corr .= eigsys.vectors * (max.(eigsys.values, thres) .* eigsys.vectors')
-        #Symmetrize
-        corr .= 0.5 * (corr + corr')
-        #Repeat the check (symmetrization might include problems)
-        eigsys = eigen(corr)
-        good_corrs = !any(eigsys.values .< thres)
-        nits += 1
-    end
+    good_corrs = isposdef(corr)
 
-    #Now corr contains the Cholesky matrix, so use it to obtain the random numbers
-    randn!(xi)
-    xi .= corr * xi
+    #If it is, get our random variables
+    if good_corrs
+        #print("G")
+        cholesky!(corr)
+        randn!(xi)
+        xi .= sqrt(a) * corr * xi
+    else 
+        println(t)
+        #print("B")
+        #corr2 = nearest_cor(corr, DirectProjection())
+        #display(corr2 - corr)
+        #If not, get the (normalized) correlation matrix, multiply by 
+        nearest_cor!(corr, DirectProjection()) 
+        cholesky!(corr)
+        randn!(xi)
+        xi .= sqrt(a) * corr * xi
+    end
     return nothing
 end
 
@@ -97,7 +131,7 @@ square root `sqdt` and current timestep `t`.
 function step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
     #Get the correlation matrix and generate multiplicative noise
     get_corrs!(nharm, a, old_x, old_y, corr)
-    get_correlated_vars!(corr, xi)
+    get_correlated_vars!(corr, a, t, xi)
 
     #Computation of the first harmonic 
     #We include 0th harmonic manually, since the 0th is always r[0]=1)
@@ -156,7 +190,7 @@ the number of iterations between writing to the file `nsample`.
 Output file format: time r[1] r[2] ... r[nharm]
 Observe that the output are the Kuramoto-Daido amplitudes
 """
-function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; w=0.01, dt=0.01, nsample=10)
+function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01, nsample=10)
     #Get constants we need for the integration
     a = 0.5 * s2 / sys_size
     sqdt = sqrt(dt) 
@@ -167,6 +201,7 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; w=0.01, dt
     x = Vector{Float64}(undef, nharm)
     y = Vector{Float64}(undef, nharm)
 
+    xi = zeros(2*nharm)
     corr = zeros(2*nharm, 2*nharm)
 
     #Initial conditions
@@ -201,7 +236,10 @@ function get_timeseries(nharm, t_thermal, tf, q, sys_size, s2, fpath; w=0.01, dt
             nt += 1
         end
     end
-    return abs(rk[1]) 
+
+    get_corrs!(nharm, a, old_x, old_y, corr)
+    corr2 = nearest_cor(corr)
+    display(corr-corr2)
 end
 
 """

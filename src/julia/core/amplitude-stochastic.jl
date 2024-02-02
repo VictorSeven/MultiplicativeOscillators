@@ -5,7 +5,7 @@ i.e., after assuming the ansatz for the angles.
 module AmplitudeEquations
 export get_timeseries, phase_diagram 
 
-using LinearAlgebra, Distributions, Random
+using LinearAlgebra, Distributions, Random, NearestCorrelationMatrix
 
 """
     get_corrs!(nharm::Int, a::Float64, r::Vector, corr::Matrix)
@@ -14,22 +14,25 @@ Computes the multiplicative noise matrix and stores it in `corr`, assuming
 `nharm` harmonics, noise intensity `a` and Kuramoto-Daido parameters `r`
 """
 function get_corrs!(nharm, a, r, corr)
+    d = Vector{Float64}(undef, nharm)
     #Fill half of the matrix (a corr matrix is symmetric)
     for i=1:nharm
         for j=1:i-1
             #Closure condition. All harmonics larger than nharm are 0
-            term = i+j<=nharm ? r[i+j] : 0.0 
+            term = i+j<=nharm ? r[i+j] : r[1]^(i+j) 
 
             #Matrix element
-            corr[j,i] = i*j*a*(r[i-j] - term)  
+            corr[j,i] = i*j*(r[i-j] - term)  
         end
 
         #Fill the diagonal
-        corr[i,i] = 2*i <= nharm ? i*i*a*(1.0 - r[2*i]) : i*i*a
-
+        corr[i,i] = 2*i <= nharm ? i*i*(1.0 - r[2*i]) : i*i*(1.0 - r[1]^(2*i))
+        d[i] = 1/sqrt(corr[i,i])
     end
+
     #Enforce symmetry
-    corr .= Symmetric(corr, :L)
+    corr .= Diagonal(d)*corr*Diagonal(d) 
+    corr .= Symmetric(corr)
 end
 
 """
@@ -41,28 +44,26 @@ eigenvalues smaller than `thres` to `thres` (ensures positive definite) and symm
 after eigenvalues are capped. The check is repeated after symmetrization, for a total of
 `maxits` iterations.
 """
-function get_correlated_vars!(corr, xi; thres=1e-10, maxits=10)
+function get_correlated_vars!(corr, a, t, xi)
     #Is our matrix positive definite? 
-    #Check and overwrite corr with Cholesky decomposition
-    good_corrs = isposdef!(corr)
-    nits = 0
-    #If not,
-    while nits < maxits && !good_corrs 
-        #Compute the eigenvalues 
-        eigsys = eigen(corr)
-        #Cap eigenvalues to the threshold and rewrite the matrix in our basis
-        corr .= eigsys.vectors * (max.(eigsys.values, thres) .* eigsys.vectors')
-        #Symmetrize
-        corr .= 0.5 * (corr + corr')
-        #Repeat the check (symmetrization might include problems)
-        eigsys = eigen(corr)
-        good_corrs = !any(eigsys.values .< thres)
-        nits += 1
-    end
+    good_corrs = isposdef(corr)
 
-    #Now corr contains the Cholesky matrix, so use it to obtain the random numbers
-    randn!(xi)
-    xi .= corr * xi
+    #If it is, get our random variables
+    if good_corrs
+        #print("G")
+        cholesky!(corr)
+        randn!(xi)
+        xi .= sqrt(a) * corr * xi
+    else 
+        #print("B")
+        #corr2 = nearest_cor(corr, DirectProjection())
+        #display(corr2 - corr)
+        #If not, get the (normalized) correlation matrix, multiply by 
+        nearest_cor!(corr)
+        cholesky!(corr)
+        randn!(xi)
+        xi .= sqrt(a) * corr * xi
+    end
     return nothing
 end
 
@@ -78,7 +79,7 @@ square root `sqdt` and current timestep `t`.
 function step!(nharm, oldr, r, corr, w, q, s2, a, dt, sqdt, t, xi)
     #Get the correlation matrix and generate multiplicative noise
     get_corrs!(nharm, a, oldr, corr)
-    get_correlated_vars!(corr, xi)
+    get_correlated_vars!(corr, a, t, xi)
 
     #Computation of the first harmonic 
     #We include 0th harmonic manually, since the 0th is always r[0]=1)

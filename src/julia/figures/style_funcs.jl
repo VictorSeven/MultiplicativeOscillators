@@ -78,16 +78,14 @@ paper_theme = Theme(
 )
 
 #Return a theme for a figure with single-column size
-function one_col_figure(ratio=1.618)
-    width_pt = 246
+function one_col_figure(ratio=1.618, width_pt=246)
     heigth_pt = width_pt / ratio
     paper_theme.resolution = (width_pt, heigth_pt)
     return paper_theme
 end
 
 #Return a theme for a figure with double-column size
-function two_col_figure(ratio=1.618)
-    width_pt = 510 
+function two_col_figure(ratio=1.618, width_pt=510)
     heigth_pt = width_pt / ratio
     paper_theme.resolution = (width_pt, heigth_pt)
     return paper_theme
