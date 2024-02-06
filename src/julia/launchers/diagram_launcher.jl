@@ -1,6 +1,6 @@
 include("../core/amplitude-stochastic.jl")
-
-using .AmplitudeEquations
+include("../core/reduced-kuramoto-cartesian.jl")
+include("../core/amplitude-additive.jl")
 
 #Parameters
 nharm = 30
@@ -10,7 +10,8 @@ sys_size = 100000
 s2 = 0.1
 
 #Get the program ID from Slurms's JobArray
-task_id = parse(Int, ENV["SLURM_ARRAY_TASK_ID"]) 
+#task_id = parse(Int, ENV["SLURM_ARRAY_TASK_ID"]) 
+task_id = 0
 
 #  Get program parameters
 q0 = parse(Float64, ARGS[1])
@@ -18,7 +19,22 @@ qf = parse(Float64, ARGS[2])
 nq = parse(Int64,   ARGS[3])
 nsims = parse(Int64,ARGS[4]) #Total number of launched simulations
 nrepetitions = parse(Int64,ARGS[5]) 
-path = ARGS[6] #Where data will be stored
+integration_type = parse(String, ARGS[6])
+path = ARGS[7] #Where data will be stored
+
+#Select the kind of simulation that we will do
+phase_diagram = nothing
+if integration_type=="amplitude"
+    println("Amplitude selected")
+    phase_diagram = AmplitudeEquations.phase_diagram
+elseif integration_type=="cartesian" 
+    println("Cartesian selected")
+    phase_diagram = KuramotoCartesian.phase_diagram
+elseif integration_type=="additive" 
+    println("Additive selected")
+    phase_diagram = AdditiveNoise.phase_diagram
+end
+
 
 #Get the dq and number of simulations we have to make
 n_sims_per_program = nq ÷ nsims
