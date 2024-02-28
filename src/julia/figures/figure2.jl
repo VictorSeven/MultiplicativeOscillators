@@ -1,94 +1,131 @@
-using DelimitedFiles
-using Statistics
 using CairoMakie
+using DelimitedFiles
+using LsqFit
+using Statistics
 
 include("style_funcs.jl")
+include("palette.jl")
 
-function angle_diff(angle1, angle2)
-    angle1_mod = mod.(angle1, 2π)
-    angle2_mod = mod.(angle2, 2π)
+using .ArtsyPalettes
+using .StyleFuncs
 
-    diff = @. abs(angle1_mod - angle2_mod) 
-    return @. min(diff, 2π - diff) 
-end
 
-function diff_random_angles(n_angles, its, nharms)
-    k=collect(1:nharms)
-    av_diff = zeros(nharms)
-    for i=1:its 
-        phis = 2π * rand(n_angles)
-        zk = [mean(exp.(im*phis*k)) for k=1:nharms]
-        psi = angle.(zk)
-        av_diff += angle_diff.(psi, k*psi[1])
-    end
-    av_diff /= its
-    return mod.(av_diff, 2π)
-end
+function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, gammas; ncols=4)
+    #Initialize vectors
+    av_r   .= zeros(ngammas) 
+    av_sus .= zeros(ngammas) 
+    gammas .= Vector{Float64}(undef, ngammas)
 
-function diff_gaussian_angles(n_angles, its, nharms)
-    k=collect(1:nharms)
-    av_diff = zeros(nharms)
-    for i=1:its 
-        phis = 2*π*rand() .+ 0.5 * randn(n_angles)
-        zk = [mean(exp.(im*phis*k)) for k=1:nharms]
-        psi = angle.(zk)
-        av_diff += angle_diff.(psi, k*psi[1])
-    end
-    av_diff /= its
-    return mod.(av_diff, 2π)
-end
+    #Read simulation data. There are several simulations
+    for index=0:nsims-1
+        data = readdlm("$data_path/diagram_sim$(index)")
 
-function analyse_angle_recurrence(data_path, ax, label)
-
-    xy = readdlm(data_path)
-    nharms = (size(xy)[2] - 1) ÷ 2
-
-    z    = xy[:,2] + 1.0im*xy[:,3]
-    psi1 = angle.(z)
-
-    psidiff = Vector{Float64}(undef, nharms)
-    psidiff[1] = 0.0
-
-    println(mean(abs.(z)))
-
-    for k=2:nharms
-        z = xy[:,2*k] + 1.0im*xy[:,2*k+1]
-        psik = angle.(z)
-        psidiff[k] = mean(angle_diff(psik, k*psi1))
+        #Get ensemble averages over all simulations 
+        av_sus .+= data[1:ngammas, 3] 
+        gammas .= data[1:ngammas, 1]
+        
     end
 
-    k = collect(1:nharms) 
-    scatter!(ax, k, psidiff, markersize=5, label=label)
-
-    ylims!(ax, 0.0, π)
+    #Finish means
+    av_r ./= nsims
+    av_sus ./= nsims
 end
 
-fig = Figure(resolution=one_col_size(2), fontsize=9, figure_padding=5)
-ax = Axis(fig[1,1], xlabel=L"k", ylabel=L"\left| \psi_k - k\psi_1 \right|", 
-xgridvisible=false, ygridvisible=false)
+#TODO resolver esto
+function numerical_derivative(y, x)
+    derivs = Vector{Float64}(undef, length(x))
 
-hidespines!(ax, :t, :r)
+    h_next = x[begin+2:end-1] - x[begin+1:end-2]
+    h_back = x[begin:end] - x[begin-1:end-1]
 
-#data_path = "../../../data/timeseries/series_micro/series_100/series_0.13_1" 
-#data_path = "../../../data/timeseries/time_micro_asyn_100_4"
-data_path = "../../../data/series_micro/size_100/series_long_0.07"
-analyse_angle_recurrence(data_path, ax, "Kuramoto")
+    f_next = y
 
-#data_path = "../../../data/timeseries/time_micro_asyn_EXC_100_1"
-#analyse_angle_recurrence(data_path, ax, "Excitable Osc.")
+    @. derivs[begin+1:end-1] = (y[begin+2:end] - y[begin:end-2]) / (x[begin+2:end] - x[begin:end-2])  
 
-k = collect(1:10)
-scatter!(ax, k, diff_random_angles(100, 10000, 10), markersize=5, label="Random")
-#scatter!(ax, k, diff_gaussian_angles(10000, 10000, 10), markersize=5, label="Gaussian")
+    derivs[1] = (y[2] - y[1]) / (x[2] - x[1])  
+    derivs[end] = (y[end] - y[end-1]) / (x[end] - x[end-1])  
 
-data_path = "../../../data/series_micro/size_10000/series_long_0.07"
-analyse_angle_recurrence(data_path, ax, "Synchro")
+    return derivs
 
-data_path = "../../../data/series_micro/size_10000/series_long_0.2"
-#analyse_angle_recurrence(data_path, ax, "Synchro")
 
-hlines!(ax, π/2, color=:gray, linestyle=:dash, label=L"\pi/2")
+    #return @views @. (y[2:end] - y[1:end-1]) / (x[2:end] - x[1:end-1]) 
+end
 
-create_legend(ax, (0.005, 1.2))
+function plot_effective_exponent(ax, q, susc)
+    peak, halfpoint = findmax(susc) 
+    rc = q[halfpoint] 
+    eps = @. (q - rc) / rc 
+    gammaeff = numerical_derivative(log.(susc), log.(abs.(eps)))
 
-save("figure2.pdf", fig, pt_per_unit=1)
+    lin2fit(x, p) = p[1]*x .+ p[2] 
+    p0 = [1., 0.]
+    offset = 1
+
+
+    x = eps[begin:halfpoint-1]
+    y = -1 ./ gammaeff[begin:halfpoint-1]
+    scatter!(ax, x, y)
+
+    println(x[begin:end-offset])
+    fit = curve_fit(lin2fit, x[begin:end-offset], y[begin:end-offset], p0)
+    p, err = fit.param, estimate_errors(fit, 0.95)
+    println("$(p[1]) ± $(err[1])")
+    println("$(p[2]) ± $(err[2])")
+    lines!(ax, x, lin2fit(x, p), label="γ = $(round(p[2], sigdigits=3)) ± $(round(err[2], sigdigits=1))")
+
+    x = eps[halfpoint+1:end]
+    y = -1 ./ gammaeff[halfpoint+1:end]
+    scatter!(ax, x, y)
+
+    fit = curve_fit(lin2fit, x[begin+offset:end], y[begin+offset:end], p0)
+    p, err = fit.param, estimate_errors(fit, 0.95)
+    println("$(p[1]) ± $(err[1])")
+    println("$(p[2]) ± $(err[2])")
+    lines!(ax, x, lin2fit(x, p), label="γ' = $(round(p[2], sigdigits=3)) ± $(round(err[2], sigdigits=1))")
+
+
+    axislegend(ax, position=(0.1, 0.8))
+    vlines!(ax, [0.0], color=:black)
+
+
+    
+    xlims!(ax, -0.45, 0.45)
+    ylims!(ax, 0.5, 1.5)
+
+    ax.xlabel =  L"$\varepsilon$"
+    ax.ylabel =  L"$\gamma_{\text{eff}}$"
+
+end
+
+
+#Start the figure with two axes 
+#fig = Figure(resolution=two_col_size(2*1.618), fontsize=9, figure_padding=7)
+set_theme!(two_col_figure(2*1.618))
+fig = Figure(figure_padding=7)
+
+ax = Axis(fig[1,1])
+
+ax = Axis(fig[1,2])
+
+ngammas = 100
+nsims = 3000 
+data_path = "../../../data/gamma/offcritical_n1e6_sigsq0.1"
+s2 = 0.1
+
+#Intialize vectors
+av_r = Vector{Float64}(undef, ngammas)
+av_sus = Vector{Float64}(undef, ngammas)
+gammas = Vector{Float64}(undef, ngammas)
+
+read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, gammas)
+
+#Get the colormap
+colors = met_brew("Egypt")
+colors = [colors[i] for i in [2,3]]
+
+plot_effective_exponent(ax, gammas, av_sus)
+
+
+
+#Save the figure
+save("figure2.pdf", fig, pt_per_unit = 1)

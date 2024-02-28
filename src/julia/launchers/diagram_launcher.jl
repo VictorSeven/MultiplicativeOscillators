@@ -10,8 +10,7 @@ sys_size = 100000
 s2 = 0.1
 
 #Get the program ID from Slurms's JobArray
-#task_id = parse(Int, ENV["SLURM_ARRAY_TASK_ID"]) 
-task_id = 0
+task_id = parse(Int, ENV["SLURM_ARRAY_TASK_ID"]) 
 
 #  Get program parameters
 q0 = parse(Float64, ARGS[1])
