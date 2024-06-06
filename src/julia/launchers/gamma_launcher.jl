@@ -4,8 +4,8 @@ include("../core/amplitude-additive.jl")
 #Parameters
 nharm = 30
 t_thermal = 100000.0
-tf = 50000.0
-sys_size = 1000000
+tf = 100000.0
+sys_size = 10000000
 s2 = 0.1
 
 #Get the program ID from Slurms's JobArray

@@ -1,11 +1,18 @@
 #!/bin/bash
-#SBATCH -J julia	# Job name
-#SBATCH -o julia.%j.out	# Name of stdout output file(%j expands to jobId)
-#SBATCH -e julia.%j.err	# Name of stderr output file(%j expands to jobId)
+#SBATCH -J julia        # Job name
+#SBATCH -o julia.%j.out # Name of stdout output file(%j expands to jobId)
+#SBATCH -e julia.%j.err # Name of stderr output file(%j expands to jobId)
 #SBATCH --partition=short,metis
 #SBATCH --constraint=metis
 #SBATCH -c 1
 #SBATCH --mem 1500
-#SBATCH --array=0-99
+#SBATCH --array=0-599
 
-srun julia diagram_launcher.jl 0.095 0.125 100 100 100 ../../data/gamma/size100000
+#for amplitude
+#srun julia gamma_launcher.jl 0.08 0.12 100 100 amplitude ../../../data/gamma/amplitude
+
+
+#for amplitude equations with additive noise 
+#srun julia gamma_launcher.jl 0.06 0.14 100 20 100 additive ../../../data/gamma/additive
+srun julia gamma_launcher.jl 0.18 0.42 100 20 100 additive ../../../data/gamma/additive
+~            

@@ -6,6 +6,11 @@
 #SBATCH --constraint=metis
 #SBATCH -c 1
 #SBATCH --mem 700
-#SBATCH --array=0-299
 
-srun julia timeseries_launcher.jl
+srun julia timeseries_launcher.jl 0.05 amplitude ../../../data/series4dists 0 
+srun julia timeseries_launcher.jl 0.1 amplitude ../../../data/series4dists 1
+srun julia timeseries_launcher.jl 0.2 amplitude ../../../data/series4dists 2
+
+srun julia timeseries_launcher.jl 0.05 additive ../../../data/series4dists 0 
+srun julia timeseries_launcher.jl 0.1 additive ../../../data/series4dists 1
+srun julia timeseries_launcher.jl 0.2 additive ../../../data/series4dists 2

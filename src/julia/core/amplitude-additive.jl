@@ -34,14 +34,14 @@ function step!(nharm, oldr, r, w, q, s2, sqa, dt, sqdt, t, xi)
     @simd for k=2:nharm-1
         det = 0.5*k*(q*oldr[1]*(oldr[k-1] - oldr[k+1]) -k*s2*oldr[k]) 
         term = 2k < nharm ? oldr[2k] : oldr[1]^(2k)
-        r[k] = oldr[k] + dt * det + sqdt * (k) * sqrt(1 - term)  * xi[k]
+        r[k] = oldr[k] + dt * det + sqdt * k * sqrt(1 - term)  * xi[k]
         r[k] = min(1.0, max(r[k], 0.0))
     end
 
     #Update the last harmonic by hand to include the closure condition z[nharm+1]=0
     k = nharm 
     det = 0.5*k*(q*oldr[1]*oldr[k-1] - k*s2*oldr[k]) 
-    r[k] = oldr[k] + dt * det + sqdt * (k) * xi[k]
+    r[k] = oldr[k] + dt * det + sqdt * k * sqrt(1 - oldr[1]^(2k)) * xi[k]
     r[k] = min(1.0, max(r[k], 0.0))
 end
 

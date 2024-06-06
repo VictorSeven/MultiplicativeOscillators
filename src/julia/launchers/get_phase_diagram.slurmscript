@@ -9,10 +9,10 @@
 #SBATCH --array=0-99
 
 #for amplitude
-#srun julia diagram_launcher.jl 0.0 0.2 100 100 100 amplitude ../../../data/diagrams/30harms_amplitude
+srun julia diagram_launcher.jl 0.0 0.2 100 100 100 amplitude ../../../data/diagrams/30harms_amplitude
 
 #for cartesian
 #srun julia diagram_launcher.jl 0.0 0.2 100 100 100 cartesian ../../../data/diagrams/30harms_cartesian
 
 #for amplitude equations with additive noise 
-srun julia diagram_launcher.jl 0.0 0.2 100 100 100 additive ../../../data/diagrams/30harms_cartesian
+#srun julia diagram_launcher.jl 0.0 0.2 100 100 100 additive ../../../data/diagrams/30harms_cartesian

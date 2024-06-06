@@ -4,7 +4,7 @@ include("../core/reduced-kuramoto-cartesian.jl")
 
 #Parameters
 nharm = 30
-t_thermal = 1000.0
+t_thermal = 500.0
 tf = 10000.0
 sys_size = 1000
 w = 0.1
