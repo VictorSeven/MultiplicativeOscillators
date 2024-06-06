@@ -20,27 +20,28 @@ square root `sqdt` and current timestep `t`.
 function step!(nharm, oldr, r, w, q, s2, sqa, dt, sqdt, t, xi)
     #Directly generate diagonal multiplicative noise 
     randn!(xi)
-    xi .*= sqa 
+    xi .*=  sqa 
 
     #Computation of the first harmonic 
     #We include 0th harmonic manually, since the 0th is always r[0]=1)
     #Then clamp the order parameter to its validity range
     k = 1 
     det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) 
-    r[k] = oldr[k] + dt * det + sqdt * xi[k]
+    r[k] = oldr[k] + dt * det + sqdt * sqrt(1 - oldr[2]) * xi[k]
     r[k] = min(1.0, max(r[k], 0.0))
 
     #From harmonic 2 to nharm-1
     @simd for k=2:nharm-1
         det = 0.5*k*(q*oldr[1]*(oldr[k-1] - oldr[k+1]) -k*s2*oldr[k]) 
-        r[k] = oldr[k] + dt * det + sqdt * xi[k]
+        term = 2k < nharm ? oldr[2k] : oldr[1]^(2k)
+        r[k] = oldr[k] + dt * det + sqdt * (k) * sqrt(1 - term)  * xi[k]
         r[k] = min(1.0, max(r[k], 0.0))
     end
 
     #Update the last harmonic by hand to include the closure condition z[nharm+1]=0
     k = nharm 
     det = 0.5*k*(q*oldr[1]*oldr[k-1] - k*s2*oldr[k]) 
-    r[k] = oldr[k] + dt * det + sqdt * xi[k]
+    r[k] = oldr[k] + dt * det + sqdt * (k) * xi[k]
     r[k] = min(1.0, max(r[k], 0.0))
 end
 

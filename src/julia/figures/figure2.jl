@@ -31,63 +31,85 @@ function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, gammas; nco
     av_sus ./= nsims
 end
 
-#TODO resolver esto
 function numerical_derivative(y, x)
-    derivs = Vector{Float64}(undef, length(x))
+    """
+    Compute the derivative of the function y(x) which has been sampled in discrete steps. The implementation here has
+    been copied from Numpy's gradient function (centered finite differences) with boundary conditions having first order.
+    """
 
-    h_next = x[begin+2:end-1] - x[begin+1:end-2]
-    h_back = x[begin:end] - x[begin-1:end-1]
+    #Create target vector
+    n = length(x)
+    derivs = Vector{Float64}(undef, n)
 
-    f_next = y
+    #Take care of the boundary conditions
+    derivs[1] = (y[2] - y[1]) / (x[2] - x[1]) 
+    derivs[end] = (y[end] - y[end-1]) / (x[end] - x[end-1]) 
 
-    @. derivs[begin+1:end-1] = (y[begin+2:end] - y[begin:end-2]) / (x[begin+2:end] - x[begin:end-2])  
+    #dx for non-equally spaced points
+    xdiff = @views x[2:end] - x[1:end-1]
+    dx1 = xdiff[1:end-1]
+    dx2 = xdiff[2:end]
 
-    derivs[1] = (y[2] - y[1]) / (x[2] - x[1])  
-    derivs[end] = (y[end] - y[end-1]) / (x[end] - x[end-1])  
+    #Constants for left, centered and right steps
+    a = @. -(dx2)/(dx1 * (dx1 + dx2))
+    b = @. (dx2 - dx1) / (dx1 * dx2)
+    c = @. dx1 / (dx2 * (dx1 + dx2))
+
+    #Slices 
+    slice1 = 2:n-1
+    slice2 = 1:n-2
+    slice3 = 2:n-1
+    slice4 = 3:n
+    
+    #Finish computation and return values
+    @. derivs[slice1] = @views a*y[slice2] + b*y[slice3] + c*y[slice4]  
 
     return derivs
-
-
-    #return @views @. (y[2:end] - y[1:end-1]) / (x[2:end] - x[1:end-1]) 
 end
 
 function plot_effective_exponent(ax, q, susc)
+    #Get the maximum of the susceptibility
     peak, halfpoint = findmax(susc) 
     rc = q[halfpoint] 
     eps = @. (q - rc) / rc 
+    #Compute effective value of the exponent
     gammaeff = numerical_derivative(log.(susc), log.(abs.(eps)))
+    offset = 1 #To avoid taking the nan values at criticality
 
+    #Prepare functions for fitting
     lin2fit(x, p) = p[1]*x .+ p[2] 
-    p0 = [1., 0.]
-    offset = 1
+    quad2fit(x, p) = p[1]*x .+ p[3]*x .^2 .+ p[2] 
 
-
-    x = eps[begin:halfpoint-1]
-    y = -1 ./ gammaeff[begin:halfpoint-1]
+    #Do the scatterplot
+    x = eps[begin:halfpoint-offset]
+    y = -1 ./ gammaeff[begin:halfpoint-offset]
     scatter!(ax, x, y)
 
-    println(x[begin:end-offset])
+    #Do fit for gamma and plot it
+    p0 = [0., 1.]
     fit = curve_fit(lin2fit, x[begin:end-offset], y[begin:end-offset], p0)
-    p, err = fit.param, estimate_errors(fit, 0.95)
-    println("$(p[1]) ± $(err[1])")
-    println("$(p[2]) ± $(err[2])")
-    lines!(ax, x, lin2fit(x, p), label="γ = $(round(p[2], sigdigits=3)) ± $(round(err[2], sigdigits=1))")
+    p, err = fit.param, estimate_errors(fit, 0.68)
+    #println("$(p[1]) ± $(err[1])")
+    #println("$(p[2]) ± $(err[2])")
+    lines!(ax, x, lin2fit(x, p), label="γ = $(round(p[2], sigdigits=4)) ± $(round(err[2], sigdigits=1))")
 
+
+    #Scatterplot for the remaining things
     x = eps[halfpoint+1:end]
     y = -1 ./ gammaeff[halfpoint+1:end]
     scatter!(ax, x, y)
 
-    fit = curve_fit(lin2fit, x[begin+offset:end], y[begin+offset:end], p0)
-    p, err = fit.param, estimate_errors(fit, 0.95)
-    println("$(p[1]) ± $(err[1])")
-    println("$(p[2]) ± $(err[2])")
-    lines!(ax, x, lin2fit(x, p), label="γ' = $(round(p[2], sigdigits=3)) ± $(round(err[2], sigdigits=1))")
+    #Fit for gamma'...
+    p0 = [0., 1., 0.]
+    fit = curve_fit(quad2fit, x[begin+offset:end], y[begin+offset:end], p0)
+    p, err = fit.param, estimate_errors(fit, 0.68)
+    #println("$(p[1]) ± $(err[1])")
+    #println("$(p[2]) ± $(err[2])")
+    lines!(ax, x, quad2fit(x, p), label="γ' = $(round(p[2], sigdigits=4)) ± $(round(err[2], sigdigits=1))")
 
-
+    #Make the axes look nice
     axislegend(ax, position=(0.1, 0.8))
     vlines!(ax, [0.0], color=:black)
-
-
     
     xlims!(ax, -0.45, 0.45)
     ylims!(ax, 0.5, 1.5)
@@ -100,13 +122,13 @@ end
 
 #Start the figure with two axes 
 #fig = Figure(resolution=two_col_size(2*1.618), fontsize=9, figure_padding=7)
-set_theme!(two_col_figure(2*1.618))
+set_theme!(StyleFuncs.two_col_figure(2*1.618))
 fig = Figure(figure_padding=7)
 
 ax = Axis(fig[1,1])
-
 ax = Axis(fig[1,2])
 
+#Simulation data
 ngammas = 100
 nsims = 3000 
 data_path = "../../../data/gamma/offcritical_n1e6_sigsq0.1"
@@ -120,7 +142,7 @@ gammas = Vector{Float64}(undef, ngammas)
 read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, gammas)
 
 #Get the colormap
-colors = met_brew("Egypt")
+colors = ArtsyPalettes.met_brew("Egypt")
 colors = [colors[i] for i in [2,3]]
 
 plot_effective_exponent(ax, gammas, av_sus)

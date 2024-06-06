@@ -14,12 +14,13 @@ Computes the multiplicative noise matrix and stores it in `corr`, assuming
 `nharm` harmonics, noise intensity `a` and Kuramoto-Daido parameters represented
 in Cartesian coordinates `x` and `y`.
 """
-function get_corrs!(nharm, a, x, y, corr)
+function get_corrs!(nharm, a, x, y, corr, d)
     #Fill half of the matrix (a corr matrix is symmetric)
-    d = Vector{Float64}(undef, 2*nharm)
     for i=1:nharm
         for j=1:i-1
             #Closure condition. All harmonics larger than nharm are 0
+            xterm = 0.
+            yterm = 0.
             if i+j <= nharm 
                 xterm = x[i+j] 
                 yterm = y[i+j]
@@ -27,18 +28,24 @@ function get_corrs!(nharm, a, x, y, corr)
                 z1 = (x[1] + y[1]*im)^(i+j)
                 xterm = real(z1) 
                 yterm = imag(z1)
+                #println(z1, xterm)
             end
+
 
             #Matrix element
             corr[j,i] = j*i*(x[i-j] - xterm)
-            corr[j,i+nharm] = j*i*(-y[i-j] - yterm)
+            corr[j,i+nharm] = j*i*(y[i-j] - yterm)
             corr[j+nharm,i+nharm] =  j*i*(x[i-j] + xterm)
         end
 
         #Fill the diagonal
+        xterm = 0.
+        yterm = 0.
+        z1 = 0. + 0im
         if 2*i <= nharm 
             xterm = x[2*i] 
             yterm = y[2*i]
+            #print("!", xterm)
         else
             z1 = (x[1] + y[1]*im)^(2*i)
             xterm = real(z1) 
@@ -48,18 +55,22 @@ function get_corrs!(nharm, a, x, y, corr)
         corr[i,i] = i*i*(1.0 - xterm)
         corr[i,i+nharm] =  -i*i*yterm
         corr[i+nharm,i+nharm] =  i*i*(1.0 + xterm)
-        d[i] = 1/sqrt(corr[i,i])
-        d[i+nharm] = 1/sqrt(corr[i+nharm,i+nharm])
+        #println(corr[i,i], " ", xterm, " ", z1, " ", z1^(2i), " ", real(z1^(2i)))
+        #println(corr[i+nharm,i+nharm])
+        #println()
+        d[i] = sqrt(corr[i,i])
+        d[i+nharm] = sqrt(corr[i+nharm,i+nharm])
     end
 
+    invd = 1. ./ d
+
     #Enforce symmetry
-    corr .= Diagonal(d)*corr*Diagonal(d) 
+    corr .= Diagonal(invd)*corr*Diagonal(invd) 
     corr .= Symmetric(corr)
 end
 
-function get_corrs_oa!(nharm, a, x, y, corr)
+function get_corrs_oa!(nharm, a, x, y, corr, d)
     #Fill half of the matrix (a corr matrix is symmetric)
-    d = Vector{Float64}(undef, 2*nharm)
     z = x[1] + y[1]*im
     zoa = [z^k for k=1:2*nharm]
     for i=1:nharm
@@ -76,12 +87,14 @@ function get_corrs_oa!(nharm, a, x, y, corr)
         corr[i,i] = i*i*(1.0 - x2i)
         corr[i,i+nharm] =  -i*i*y2i
         corr[i+nharm,i+nharm] =  i*i*(1.0 + x2i)
-        d[i] = 1/sqrt(corr[i,i])
-        d[i+nharm] = 1/sqrt(corr[i+nharm,i+nharm])
+        d[i] = sqrt(corr[i,i])
+        d[i+nharm] = sqrt(corr[i+nharm,i+nharm])
     end
 
+    invd = 1. ./ d
+
     #Enforce symmetry
-    corr .= Diagonal(d)*corr*Diagonal(d) 
+    corr .= Diagonal(invd)*corr*Diagonal(invd) 
     corr .= Symmetric(corr)
 end
 
@@ -94,7 +107,7 @@ eigenvalues smaller than `thres` to `thres` (ensures positive definite) and symm
 after eigenvalues are capped. The check is repeated after symmetrization, for a total of
 `maxits` iterations.
 """
-function get_correlated_vars!(corr, a, t, xi)
+function get_correlated_vars!(corr, a, t, xi, d)
     #Is our matrix positive definite? 
     good_corrs = isposdef(corr)
 
@@ -102,18 +115,21 @@ function get_correlated_vars!(corr, a, t, xi)
     if good_corrs
         #print("G")
         cholesky!(corr)
+        tril!(corr)
         randn!(xi)
-        xi .= sqrt(a) * corr * xi
+        xi .= sqrt(a) * Diagonal(d) * corr * xi
+        #xi .= 0
     else 
-        println(t)
         #print("B")
         #corr2 = nearest_cor(corr, DirectProjection())
         #display(corr2 - corr)
         #If not, get the (normalized) correlation matrix, multiply by 
-        nearest_cor!(corr, DirectProjection()) 
+        nearest_cor!(corr)
         cholesky!(corr)
+        tril!(corr)
         randn!(xi)
-        xi .= sqrt(a) * corr * xi
+        xi .= sqrt(a) *  Diagonal(d) * corr * xi
+        #xi .= 0
     end
     return nothing
 end
@@ -130,8 +146,9 @@ square root `sqdt` and current timestep `t`.
 """
 function step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
     #Get the correlation matrix and generate multiplicative noise
-    get_corrs!(nharm, a, old_x, old_y, corr)
-    get_correlated_vars!(corr, a, t, xi)
+    d = Vector{Float64}(undef, 2*nharm)
+    get_corrs!(nharm, a, old_x, old_y, corr, d)
+    get_correlated_vars!(corr, a, t, xi, d)
 
     #Computation of the first harmonic 
     #We include 0th harmonic manually, since the 0th is always r[0]=1)
@@ -140,6 +157,7 @@ function step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
 
     x[1] = old_x[1] + dt * detx + sqdt * xi[1] 
     y[1] = old_y[1] + dt * dety + sqdt * xi[1+nharm]
+
 
     #Update all k from 2 to nharm-1
     @simd for k=2:nharm-1
@@ -157,6 +175,12 @@ function step!(nharm, old_x, old_y, x, y, corr, w, q, s2, a, dt, sqdt, t, xi)
 
     x[k] = old_x[k] + dt * detx + sqdt * xi[k]       
     y[k] = old_y[k] + dt * dety + sqdt * xi[k+nharm]
+
+    #println(old_x)
+    #println(xi)
+    #println(x)
+    #println()
+    #println()
 end
 
 """
@@ -225,21 +249,14 @@ function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01
             #Compute amplitudes R from cartesian
             if (nt % nsample == 0)
                 write(output, "$t ")
-                for k=1:nharm-1
-                    rk = sqrt(x[k]^2 + y[k]^2)
-                    write(output, "$rk ")
-                end
-                rk = sqrt(x[nharm]^2 + y[nharm]^2)
-                write(output, "$rk\n")
+                rk = sqrt(x[1]^2 + y[1]^2)
+                psik = atan(y[1]/x[1])
+                write(output, "$rk $psik\n")
             end
             t += dt
             nt += 1
         end
     end
-
-    get_corrs!(nharm, a, old_x, old_y, corr)
-    corr2 = nearest_cor(corr)
-    display(corr-corr2)
 end
 
 """

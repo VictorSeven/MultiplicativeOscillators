@@ -13,8 +13,9 @@ using LinearAlgebra, Distributions, Random, NearestCorrelationMatrix
 Computes the multiplicative noise matrix and stores it in `corr`, assuming
 `nharm` harmonics, noise intensity `a` and Kuramoto-Daido parameters `r`
 """
-function get_corrs!(nharm, a, r, corr)
-    d = Vector{Float64}(undef, nharm)
+function get_corrs!(nharm, r, corr, d)
+    #d = Vector{Float64}(undef, nharm)
+    
     #Fill half of the matrix (a corr matrix is symmetric)
     for i=1:nharm
         for j=1:i-1
@@ -27,11 +28,14 @@ function get_corrs!(nharm, a, r, corr)
 
         #Fill the diagonal
         corr[i,i] = 2*i <= nharm ? i*i*(1.0 - r[2*i]) : i*i*(1.0 - r[1]^(2*i))
-        d[i] = 1/sqrt(corr[i,i])
+        #d[i] = 1/sqrt(corr[i,i])
+        d[i] = sqrt(corr[i,i])
     end
 
+    invd = 1. ./ d
+
     #Enforce symmetry
-    corr .= Diagonal(d)*corr*Diagonal(d) 
+    corr .= Diagonal(invd)*corr*Diagonal(invd) 
     corr .= Symmetric(corr)
 end
 
@@ -44,25 +48,30 @@ eigenvalues smaller than `thres` to `thres` (ensures positive definite) and symm
 after eigenvalues are capped. The check is repeated after symmetrization, for a total of
 `maxits` iterations.
 """
-function get_correlated_vars!(corr, a, t, xi)
+function get_correlated_vars!(corr, sqa, t, xi, d)
     #Is our matrix positive definite? 
     good_corrs = isposdef(corr)
 
     #If it is, get our random variables
     if good_corrs
-        #print("G")
+        #Cholesky decomposition. This fills corr with no zeros, so take just the lower triangle
         cholesky!(corr)
+        tril!(corr)
+
+        #Random variables
         randn!(xi)
-        xi .= sqrt(a) * corr * xi
+
+        #Recover the original variance
+        #xi .=  sqrt(a) * Diagonal(d) * corr * xi
+        xi .=  sqa * d .* (corr * xi)
     else 
-        #print("B")
-        #corr2 = nearest_cor(corr, DirectProjection())
-        #display(corr2 - corr)
-        #If not, get the (normalized) correlation matrix, multiply by 
+        #If not, get the nearest (normalized) correlation matrix and then do the same as above
         nearest_cor!(corr)
         cholesky!(corr)
+        tril!(corr)
         randn!(xi)
-        xi .= sqrt(a) * corr * xi
+        #xi .=  sqrt(a) * Diagonal(d) * corr * xi
+        xi .=  sqa * d .* (corr * xi)
     end
     return nothing
 end
@@ -76,10 +85,12 @@ square and mesoscopic noise `a`. The variables `corr` and `xi` are the correlati
 noise and are given to avoid allocating memory. The method also needs the timestep `dt`, its 
 square root `sqdt` and current timestep `t`.
 """
-function step!(nharm, oldr, r, corr, w, q, s2, a, dt, sqdt, t, xi)
+function step!(nharm, oldr, r, corr, w, q, s2, sqa, dt, sqdt, t, xi)
     #Get the correlation matrix and generate multiplicative noise
-    get_corrs!(nharm, a, oldr, corr)
-    get_correlated_vars!(corr, a, t, xi)
+    d = Vector{Float64}(undef, nharm)
+    #get_corrs!(nharm, a, oldr, corr)
+    get_corrs!(nharm, oldr, corr, d)
+    get_correlated_vars!(corr, sqa, t, xi, d)
 
     #Computation of the first harmonic 
     #We include 0th harmonic manually, since the 0th is always r[0]=1)
@@ -129,7 +140,7 @@ Output file format: time r[1] r[2] ... r[nharm]
 """
 function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01, nsample=10)
     #Get constants we need for the integration
-    a = 0.5 * s2 / sys_size
+    sqa = sqrt(0.5 * s2 / sys_size)
     sqdt = sqrt(dt) 
 
     #Initialize vectors
@@ -143,7 +154,7 @@ function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01
 
     #Thermalize
     for t=0:dt:t_thermal 
-        step!(nharm, old_r, r, corr, w, q, s2, a, dt, sqdt, t,  xi)
+        step!(nharm, old_r, r, corr, w, q, s2, sqa, dt, sqdt, t,  xi)
         old_r, r = r, old_r
     end
 
@@ -152,7 +163,7 @@ function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01
         t = 0
         nt = 0
         while t < tf 
-            step!(nharm, old_r, r, corr, w, q, s2, a, dt, sqdt, t, xi)
+            step!(nharm, old_r, r, corr, w, q, s2, sqa, dt, sqdt, t, xi)
             old_r, r = r, old_r
 
             #Do not write all the iterations to avoid too dense file if dt is small
