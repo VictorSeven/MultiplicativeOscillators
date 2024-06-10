@@ -17,7 +17,7 @@ square and mesoscopic noise `a`. The variables `corr` and `xi` are the correlati
 noise and are given to avoid allocating memory. The method also needs the timestep `dt`, its 
 square root `sqdt` and current timestep `t`.
 """
-function step!(nharm, oldr, r, w, q, s2, sqa, dt, sqdt, t, xi)
+function step!(nharm, oldr, r, sys_size, q, s2, sqa, dt, sqdt, t, xi)
     #Directly generate diagonal multiplicative noise 
     randn!(xi)
     xi .*=  sqa 
@@ -25,16 +25,20 @@ function step!(nharm, oldr, r, w, q, s2, sqa, dt, sqdt, t, xi)
     #Computation of the first harmonic 
     #We include 0th harmonic manually, since the 0th is always r[0]=1)
     #Then clamp the order parameter to its validity range
+    #In order to take small systems into account, we include finite size correction
+    #so it is not necessary to clamp r to be always higher than 0 (that causes problems)
     k = 1 
-    det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) 
-    r[k] = oldr[k] + dt * det + sqdt * sqrt(1 - oldr[2]) * xi[k]
-    r[k] = min(1.0, max(r[k], 0.0))
+    det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) + k^2*s2*(1 + oldr[2k]) / (4 * sys_size * oldr[1])
+    r[k] = oldr[k] + dt * det + sqdt * xi[k] #* sqrt(1 - oldr[2])
+    #r[k] = min(1.0, max(r[k], 0.0))
+    r[k] = min(1.0,  r[k])
+    r[k] = abs(r[k])
 
     #From harmonic 2 to nharm-1
     @simd for k=2:nharm-1
         det = 0.5*k*(q*oldr[1]*(oldr[k-1] - oldr[k+1]) -k*s2*oldr[k]) 
         term = 2k < nharm ? oldr[2k] : oldr[1]^(2k)
-        r[k] = oldr[k] + dt * det + sqdt * k * sqrt(1 - term)  * xi[k]
+        r[k] = oldr[k] + dt * det + sqdt * k   * xi[k] #* sqrt(1 - term)
         r[k] = min(1.0, max(r[k], 0.0))
     end
 
@@ -83,7 +87,7 @@ function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01
 
     #Thermalize
     for t=0:dt:t_thermal 
-        step!(nharm, old_r, r, w, q, s2, sqa, dt, sqdt, t,  xi)
+        step!(nharm, old_r, r, sys_size, q, s2, sqa, dt, sqdt, t,  xi)
         old_r, r = r, old_r
     end
 
@@ -92,7 +96,7 @@ function get_timeseries(nharm, t_thermal, tf, w, q, sys_size, s2, fpath; dt=0.01
         t = 0
         nt = 0
         while t < tf 
-            step!(nharm, old_r, r, w, q, s2, sqa, dt, sqdt, t, xi)
+            step!(nharm, old_r, r, sys_size, q, s2, sqa, dt, sqdt, t, xi)
             old_r, r = r, old_r
 
             #Do not write all the iterations to avoid too dense file if dt is small
@@ -143,7 +147,7 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
 
             #Thermalize
             for t=0:dt:t_thermal 
-                step!(nharm, old_r, r, w, q, s2, sqa, dt, sqdt, t, xi)
+                step!(nharm, old_r, r, sys_size, q, s2, sqa, dt, sqdt, t, xi)
                 old_r, r = r, old_r
             end
 
@@ -156,7 +160,7 @@ function phase_diagram(nharm, t_thermal, tf, q0, qf, nq, sys_size, s2, fpath; sa
             t = 0
             nt = 0
             while t < tf 
-                step!(nharm, old_r, r, w, q, s2, sqa, dt, sqdt, t, xi)
+                step!(nharm, old_r, r, sys_size, q, s2, sqa, dt, sqdt, t, xi)
 
                 #Here we take a measure, every sampling iterations
                 if (nt % sampling == 0)

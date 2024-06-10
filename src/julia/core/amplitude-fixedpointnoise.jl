@@ -25,10 +25,14 @@ function step!(nharm, oldr, r, w, q, s2, g, dt, sqdt, t, xi)
     #Computation of the first harmonic 
     #We include 0th harmonic manually, since the 0th is always r[0]=1)
     #Then clamp the order parameter to its validity range
+    #In order to take small systems into account, we include finite size correction
+    #so it is not necessary to clamp r to be always higher than 0 (that causes problems)
     k = 1 
-    det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k])  
+    det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) + k^2*s2*(1 + oldr[2k]) / (4 * sys_size * oldr[1])
     r[k] = oldr[k] + dt * det + sqdt * xi[k]
-    r[k] = min(1.0, max(r[k], 0.0))
+    #r[k] = min(1.0, max(r[k], 0.0))
+    r[k] = min(1.0,  r[k])
+    r[k] = abs(r[k])
 
     #From harmonic 2 to nharm-1
     @simd for k=2:nharm-1

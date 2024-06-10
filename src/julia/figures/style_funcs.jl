@@ -16,12 +16,12 @@ function label_axes(axes; pos=[0.05, 0.9])
     if length(size(pos)) > 1
         alphabet = "abcdefghijklmnopqrstuvwxyz"
         for (i,ax) in enumerate(axes)
-            text!(ax, pos[i,1], textsize=10, pos[i,2]; text="($(alphabet[i:i]))", space=:relative)
+            text!(ax, pos[i,1], fontsize=10, pos[i,2]; text="($(alphabet[i:i]))", space=:relative)
         end
     else
         alphabet = "abcdefghijklmnopqrstuvwxyz"
         for (i,ax) in enumerate(axes)
-            text!(ax, pos[1], pos[2]; textsize=10, text="($(alphabet[i:i]))", space=:relative)
+            text!(ax, pos[1], pos[2]; fontsize=10, text="($(alphabet[i:i]))", space=:relative)
         end
     end
 end
@@ -33,7 +33,7 @@ paper_theme = Theme(
     figure_padding=5,
     
     #Default: one col figure
-    resolution=(246., 170.), 
+    size=(246., 170.), 
 
     Axis=(
 
@@ -74,20 +74,21 @@ paper_theme = Theme(
         patchlabelgap = 2.0,
         patchsize=(7.5, 10.0),
         labelsize = 8,
+        backgroundcolor =:transparent
     )
 )
 
 #Return a theme for a figure with single-column size
 function one_col_figure(ratio=1.618, width_pt=246)
     heigth_pt = width_pt / ratio
-    paper_theme.resolution = (width_pt, heigth_pt)
+    paper_theme.size = (width_pt, heigth_pt)
     return paper_theme
 end
 
 #Return a theme for a figure with double-column size
 function two_col_figure(ratio=1.618, width_pt=510)
     heigth_pt = width_pt / ratio
-    paper_theme.resolution = (width_pt, heigth_pt)
+    paper_theme.size = (width_pt, heigth_pt)
     return paper_theme
 end
 
@@ -100,7 +101,7 @@ slide_theme = Theme(
     figure_padding=5,
     
     #Default: one col figure
-    resolution=(800,600), 
+    size=(800,600), 
 
     Axis=(
 
@@ -148,7 +149,7 @@ slide_theme = Theme(
 
 function slide_figure(ratio=1.618, width_pt=800.)
     heigth_pt = width_pt / ratio
-    slide_theme.resolution = (width_pt, heigth_pt)
+    slide_theme.size = (width_pt, heigth_pt)
     return slide_theme 
 end
 

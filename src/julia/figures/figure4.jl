@@ -1,204 +1,73 @@
 
 using CairoMakie
 using DelimitedFiles
-using LsqFit
+using KernelDensity
+using Printf
 
 include("style_funcs.jl")
-function moving_average(A::AbstractArray, m::Int)
-    out = similar(A)
-    R = CartesianIndices(A)
-    Ifirst, Ilast = first(R), last(R)
-    I1 = m÷2 * oneunit(Ifirst)
-    for I in R
-        n, s = 0, zero(eltype(out))
-        for J in max(Ifirst, I-I1):min(Ilast, I+I1)
-            s += A[J]
-            n += 1
-        end
-        out[I] = s/n
+include("palette.jl")
+
+using .ArtsyPalettes
+using .StyleFuncs
+
+
+function plot_distributions!(q, axis, data_path, bounds, colors)
+
+    filenames = ["additive", "amplitude"]
+    labels = ["Additive only", "Eq. (16)"]
+
+    q2d = @sprintf("%.2f", q)
+
+    for i in eachindex(filenames)
+        name = filenames[i]
+        c = colors[i]
+        lab = labels[i]
+        rsamples = readdlm("$(data_path)/series_$(name)_$(q2d)")
+        smooth = kde(abs.(rsamples[:,2]), boundary=bounds)
+        lines!(axis, smooth.x, smooth.density, color=c, label=lab)
     end
-    return out
+
+    name = "microscopic" 
+    c = :black 
+    rsamples = readdlm("$(data_path)/microscopic_$(q2d)")
+    rsamples = @. sqrt(rsamples[:,2]^2 + rsamples[:,3]^2)
+    smooth = kde(rsamples, boundary=bounds)
+    lines!(axis, smooth.x, smooth.density, color=c, label="Simulation")
+
+    axis.xticks = [bounds[1], bounds[2]]
+    #axis.yticks = [axis.yticks[1], axis.yticks[end]]
+    axis.title = "J=$q"
+    axis.titlefont = :regular
 end
 
-function plot_variance(axis)
-    nparts = 3
-    ngammas = 50
-    nsims = 100
-    n = 100000
-    s2 = 0.1
-    data_path = "../../../data/diagrams"
 
-    av_r = zeros(ngammas) 
-    av_sus = zeros(ngammas) 
-    av_sus_realization = zeros(ngammas) 
-    gammas = Vector{Float64}(undef, ngammas)
-
-
-    for index=1:nsims
-        data = Matrix{Float64}(undef, 0, 4) 
-        for part=1:nparts
-            nextdata = readdlm("$data_path/diagrams_$n/diagram_$(index-1)_$(part-1)")
-            data = vcat(data, nextdata) 
-        end
-        av_r += data[:, 2] 
-        av_sus_realization += data[:,2].^2
-        av_sus += data[:,3]
-        gammas = data[:, 1]
-    end
-    av_r /= nsims
-    av_sus /= nsims
-    av_sus_realization /= nsims
-    av_sus_realization -= av_r .^ 2
-
-    var_theo = readdlm("../../../data/gamma/theoretical/size100000/amplitude_50")[:,2] #integrate_full.(0.1, gammas, s2)
-    var_theo = moving_average(var_theo, 5)
-    teogammas = LinRange(0.095, 0.125, 100)
-    #scatter!(axis, teogammas, 2*var_theo, label="Full System", markersize=3)
-    lines!(axis, teogammas, sqrt(10)*var_theo, label="Full System")
-    scatter!(axis, gammas, av_sus, markersize=4, color=:gray, label="Simulation")
-    #scatter!(axis, gammas[2:end], 3.8*av_sus_realization[1:end-1], markersize=4, color=:orange, label="Simulation")
-    scatter!(axis, gammas, av_sus_realization, markersize=4, color=:orange, label="Simulation")
-
-    var_theo = readdlm("../../../data/gamma/theoretical/sf_50harms")[:,2] #integrate_full.(0.1, gammas, s2)
-    #var_theo = moving_average(var_theo, 5)
-    teogammas = LinRange(0.0, 0.2, 100)
-    #scatter!(axis, teogammas, 2*var_theo, label="Full System", markersize=3)
-    lines!(axis, teogammas, var_theo, label="Full System")
-
-    var_theo = readdlm("../../../data/gamma/theoretical/sf_10harms")[:,2] #integrate_full.(0.1, gammas, s2)
-    #var_theo = moving_average(var_theo, 5)
-    teogammas = LinRange(0.0, 0.2, 100)
-    #scatter!(axis, teogammas, 2*var_theo, label="Full System", markersize=3)
-    lines!(axis, teogammas, var_theo, label="Full System")
-
-    vlines!(axis, [0.11, 0.112])
-
-    #create_legend(axis, (-6.5, 2))
-
-    axis.xlabel = L"J"
-    axis.ylabel = L"\chi"
-
-    xlims!(axis, 0.09, 0.13)
-
-end
-
-function plot_gamma(axis)
-    nparts = 3
-    ngammas = 50
-    nsims = 100
-    n = 100000
-    s2 = 0.1
-    data_path = "../../../data/diagrams"
-
-    av_r = zeros(ngammas) 
-    av_sus = zeros(ngammas) 
-    gammas = Vector{Float64}(undef, ngammas)
-
-
-    for index=1:nsims
-        data = Matrix{Float64}(undef, 0, 4) 
-        for part=1:nparts
-            nextdata = readdlm("$data_path/diagrams_$n/diagram_$(index-1)_$(part-1)")
-            data = vcat(data, nextdata) 
-        end
-        av_r += data[:, 2] 
-        av_sus += data[:, 3] 
-        gammas = data[:, 1]
-    end
-    av_r /= nsims
-    av_sus /= nsims
-
-    var_theo = readdlm("../../../data/gamma/theoretical/size100000/amplitude_50")[:,2] #integrate_full.(0.1, gammas, s2)
-    teogammas = LinRange(0.095, 0.125, 100)
-    #var_theo = av_sus
-
-    gc = 0.115
-
-    epsilon = (teogammas .- gc) / gc
-    #epsilon = (gammas .- gc) / gc
-
-
-    logvar = log.(abs.(var_theo[epsilon .> 0]))
-    #var_theo = log.(abs.(av_sus[epsilon .> 0]))
-    logepsilon = log.(epsilon[epsilon .> 0])
-
-    p=20
-    logvar= logvar[begin:begin+p]
-    logepsilon = logepsilon[begin:begin+p] 
-
-
-    @. model(x,p) = p[1]*x+p[2] 
-    fit = curve_fit(model, logepsilon, logvar, [1.0, -10])
-    b = fit.param
-    sigma = margin_error(fit)
-    println(b, " ", sigma)
-
-    lines!(axis[1], logepsilon, model(logepsilon, b), color=:black)
-    scatter!(axis[1], logepsilon, logvar, label="Full System", markersize=3)
-
-
-    gc = 0.102
-
-    epsilon = (teogammas .- gc) / gc
-    #epsilon = (gammas .- gc) / gc
-
-    #logvar= log.(abs.(av_sus[epsilon .< 0]))
-    logvar = log.(abs.(var_theo[epsilon .< 0]))
-    logepsilon = log.(-epsilon[epsilon .< 0])
-
-    logvar = logvar[end-p:end]
-    logepsilon = logepsilon[end-p:end] 
-
-    @. model(x,p) = p[1]*x+p[2] 
-    fit = curve_fit(model, logepsilon, logvar, [1.0, -10])
-    b = fit.param
-    sigma = margin_error(fit)
-    println(b, " ", sigma)
-
-    lines!(axis[2], logepsilon, model(logepsilon, b), color=:black)
-    scatter!(axis[2], logepsilon, logvar, label="Full System", markersize=3)
-
-
-    #=
-    scatter!(axis, epsilon, log.(var_theo), label="Full System", markersize=3)
-    #ylims!(axis, 0, 1.5)
-    #scatter!(axis, gammas, av_sus, markersize=4, color=:gray, label="Simulation")
-
-    epsilon = LinRange(0.0, 1.0, 10)
-    teoline =  epsilon .- 12 
-    lines!(axis, epsilon , teoline, color=:black)
-
-
-    #create_legend(axis, (-6.5, 2))
-
-    axis.xlabel = L"J"
-    axis.ylabel = L"\chi"
-    =#
-
-end
-
-fig = Figure(resolution=one_col_size(2.25), fontsize=9, figure_padding=7)
+set_theme!(StyleFuncs.one_col_figure(2.5))
+fig = Figure(figure_padding=(2, 7, 2, 1), backgroundcolor=:transparent)
 group = fig[1,1] = GridLayout()
-left  = group[1,1] = GridLayout()
-right = group[1,2] = GridLayout()
-axvar = Axis(left[1,1], xgridvisible=false, ygridvisible=false) 
-axgamma = [Axis(right[j,1], xgridvisible=false, ygridvisible=false) for j=1:2]
-
-axs = [axvar, axgamma[1], axgamma[2]]
-
-colgap!(group,5)
-rowgap!(right, 2)
-
+axs = [Axis(group[2,j], xgridvisible=false, ygridvisible=false) for j=1:3]
 
 hidespines!.(axs, :t, :r)
 
-linkxaxes!(axgamma[1], axgamma[2])
+data_path = "../../../data/series4dists/series_1000"
 
-hideydecorations!.(axs, label=true)
-hidexdecorations!(axgamma[1])
+colors = ArtsyPalettes.met_brew("Isfahan1")
+colors = [colors[i] for i in [2, 5]]
+plot_distributions!(0.05, axs[1], data_path, (0., 0.2), colors)
+plot_distributions!(0.1, axs[2], data_path, (0., 0.5), colors)
+plot_distributions!(0.2, axs[3], data_path, (0.75, 0.9), colors)
 
-plot_variance(axvar)
-plot_gamma(axgamma)
+axs[2].xlabel = "R"
+axs[2].xlabelpadding = -4.
+axs[1].ylabel = "p(R)"
 
-label_axes(axs)
+leg = Legend(group[1,1:3], axs[1], position=(0., 0.), orientation=:horizontal, backgroundcolor=:transparent)
+#Label(group[2, 1, Top()], "Title")
+
+
+rowgap!(group, 0)
+colgap!(group, 3)
+rowsize!(group, 2, Relative(0.7))
+
+StyleFuncs.label_axes(axs, pos=[0.75, 0.8])
+
 save("figure4.pdf", fig, pt_per_unit = 1)

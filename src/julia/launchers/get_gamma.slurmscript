@@ -15,4 +15,4 @@
 #for amplitude equations with additive noise 
 #srun julia gamma_launcher.jl 0.06 0.14 100 20 100 additive ../../../data/gamma/additive
 srun julia gamma_launcher.jl 0.18 0.42 100 20 100 additive ../../../data/gamma/additive
-~            
+            

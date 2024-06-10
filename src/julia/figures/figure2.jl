@@ -10,11 +10,11 @@ using .ArtsyPalettes
 using .StyleFuncs
 
 
-function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, gammas; ncols=4)
+function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, var_r, gammas; ncols=4)
     #Initialize vectors
-    av_r   .= zeros(ngammas) 
-    av_sus .= zeros(ngammas) 
-    gammas .= Vector{Float64}(undef, ngammas)
+    av_r   .= 0. 
+    var_r  .= 0. 
+    av_sus .= 0. 
 
     #Read simulation data. There are several simulations
     for index=0:nsims-1
@@ -22,12 +22,17 @@ function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, gammas; nco
 
         #Get ensemble averages over all simulations 
         av_sus .+= data[1:ngammas, 3] 
+        var_r  .+= data[1:ngammas, 2] .* data[1:ngammas, 2] 
+        av_r   .+= data[1:ngammas, 2] 
+
         gammas .= data[1:ngammas, 1]
         
     end
 
     #Finish means
     av_r ./= nsims
+    var_r./= nsims
+    @. var_r = var_r - av_r * av_r
     av_sus ./= nsims
 end
 
@@ -108,7 +113,6 @@ function plot_effective_exponent(ax, q, susc)
     lines!(ax, x, quad2fit(x, p), label="γ' = $(round(p[2], sigdigits=4)) ± $(round(err[2], sigdigits=1))")
 
     #Make the axes look nice
-    axislegend(ax, position=(0.1, 0.8))
     vlines!(ax, [0.0], color=:black)
     
     xlims!(ax, -0.45, 0.45)
@@ -122,31 +126,69 @@ end
 
 #Start the figure with two axes 
 #fig = Figure(resolution=two_col_size(2*1.618), fontsize=9, figure_padding=7)
-set_theme!(StyleFuncs.two_col_figure(2*1.618))
-fig = Figure(figure_padding=7)
+set_theme!(StyleFuncs.one_col_figure(1.62))
+fig = Figure(figure_padding=2)
+
+#Initialize the vectors we'll need
+
 
 ax = Axis(fig[1,1])
-ax = Axis(fig[1,2])
+
+ngammas = 40 
+av_r = Vector{Float64}(undef, ngammas)
+av_sus = Vector{Float64}(undef, ngammas)
+var_r = Vector{Float64}(undef, ngammas)
+gammas = Vector{Float64}(undef, ngammas)
+nsims = 100 
+
+#Get the colormap
+colors = ArtsyPalettes.met_brew("Isfahan1")
+color = colors[5]
+
+data_kuramoto = "../../../data/diagrams/diagrams_100000"
+
+read_data_simpler!(data_kuramoto, ngammas, nsims, av_r, av_sus, var_r, gammas)
+lines!(ax, gammas, var_r, color=:black, label="Simulation")
+
+data_meso     = "../../../data/diagrams/30harms_amplitude"
+
+ngammas = 100 
+av_r = Vector{Float64}(undef, ngammas)
+av_sus = Vector{Float64}(undef, ngammas)
+var_r = Vector{Float64}(undef, ngammas)
+gammas = Vector{Float64}(undef, ngammas)
+nsims = 100 
+
+read_data_simpler!(data_meso, ngammas, nsims, av_r, av_sus, var_r, gammas)
+lines!(ax, gammas, var_r, color=color, label="Eq. (16)")
+
+xlims!(ax, 0.08, 0.12)
+axislegend(ax, position=(0.9, 0.9))
+
+
+
+ax = Axis(fig[2,1])
 
 #Simulation data
 ngammas = 100
+av_r = Vector{Float64}(undef, ngammas)
+av_sus = Vector{Float64}(undef, ngammas)
+var_r = Vector{Float64}(undef, ngammas)
+gammas = Vector{Float64}(undef, ngammas)
+
 nsims = 3000 
 data_path = "../../../data/gamma/offcritical_n1e6_sigsq0.1"
 s2 = 0.1
 
-#Intialize vectors
-av_r = Vector{Float64}(undef, ngammas)
-av_sus = Vector{Float64}(undef, ngammas)
-gammas = Vector{Float64}(undef, ngammas)
 
-read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, gammas)
+read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, var_r, gammas)
 
 #Get the colormap
 colors = ArtsyPalettes.met_brew("Egypt")
 colors = [colors[i] for i in [2,3]]
 
 plot_effective_exponent(ax, gammas, av_sus)
-
+axislegend(ax, position=(0.05, 3))
 
 
 #Save the figure
