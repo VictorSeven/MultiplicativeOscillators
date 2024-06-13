@@ -98,13 +98,13 @@ function step!(nharm, oldr, r, corr, sys_size, q, s2, sqa, dt, sqdt, t, xi)
     #In order to take small systems into account, we include finite size correction
     #so it is not necessary to clamp r to be always higher than 0 (that causes problems)
     k = 1 
-    det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) + k^2*s2*(1 + oldr[2k]) / (4 * sys_size * oldr[1])
+    det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) #+ k^2*s2*(1 + oldr[2k]) / (4 * sys_size * oldr[1])
     r[k] = oldr[k] + dt * det + sqdt * xi[k]
     r[k] = min(1.0, r[k])
     r[k] = abs(r[k])
 
     #From harmonic 2 to nharm-1. No finite-size correction from here. 
-    @simd for k=2:nharm-1
+    @inbounds @simd for k=2:nharm-1
         det = 0.5*k*(q*oldr[1]*(oldr[k-1] - oldr[k+1]) -k*s2*oldr[k]) 
         r[k] = oldr[k] + dt * det + sqdt * xi[k]
         r[k] = min(1.0, max(r[k], 0.0))

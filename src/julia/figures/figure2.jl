@@ -126,7 +126,7 @@ end
 
 #Start the figure with two axes 
 #fig = Figure(resolution=two_col_size(2*1.618), fontsize=9, figure_padding=7)
-set_theme!(StyleFuncs.one_col_figure(1.62))
+set_theme!(StyleFuncs.one_col_figure(1.5))
 fig = Figure(figure_padding=2)
 
 #Initialize the vectors we'll need
@@ -152,7 +152,7 @@ lines!(ax, gammas, var_r, color=:black, label="Simulation")
 
 data_meso     = "../../../data/diagrams/30harms_amplitude"
 
-ngammas = 100 
+ngammas = 99 
 av_r = Vector{Float64}(undef, ngammas)
 av_sus = Vector{Float64}(undef, ngammas)
 var_r = Vector{Float64}(undef, ngammas)
@@ -160,10 +160,15 @@ gammas = Vector{Float64}(undef, ngammas)
 nsims = 100 
 
 read_data_simpler!(data_meso, ngammas, nsims, av_r, av_sus, var_r, gammas)
-lines!(ax, gammas, var_r, color=color, label="Eq. (16)")
+lines!(ax, gammas, var_r, color=color, label="Eqs. (10)")
+
+ax.yticks = [0.0, 1.5e-4] 
 
 xlims!(ax, 0.08, 0.12)
 axislegend(ax, position=(0.9, 0.9))
+
+ax.xlabel = "J"
+ax.ylabel = "χ/N"
 
 
 
@@ -188,7 +193,7 @@ colors = ArtsyPalettes.met_brew("Egypt")
 colors = [colors[i] for i in [2,3]]
 
 plot_effective_exponent(ax, gammas, av_sus)
-axislegend(ax, position=(0.05, 3))
+axislegend(ax, position=(0.05, 1.5), padding=(0,0, 0,0))
 
 
 #Save the figure

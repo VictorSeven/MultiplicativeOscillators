@@ -14,25 +14,29 @@ using .StyleFuncs
 function plot_distributions!(q, axis, data_path, bounds, colors)
 
     filenames = ["additive", "amplitude"]
-    labels = ["Additive only", "Eq. (16)"]
+    labels = ["Additive only", "Eqs. (10)"]
 
     q2d = @sprintf("%.2f", q)
+
+    binspace = bounds[1]:(bounds[2]-bounds[1])/40:bounds[2]
 
     for i in eachindex(filenames)
         name = filenames[i]
         c = colors[i]
         lab = labels[i]
         rsamples = readdlm("$(data_path)/series_$(name)_$(q2d)")
-        smooth = kde(abs.(rsamples[:,2]), boundary=bounds)
-        lines!(axis, smooth.x, smooth.density, color=c, label=lab)
+        #smooth = kde(abs.(rsamples[:,2]), boundary=bounds)
+        #lines!(axis, smooth.x, smooth.density, color=c, label=lab)
+        stephist!(axis, abs.(rsamples[:,2]), bins=binspace, color=c, label=lab, normalization=:pdf)
     end
 
     name = "microscopic" 
     c = :black 
     rsamples = readdlm("$(data_path)/microscopic_$(q2d)")
     rsamples = @. sqrt(rsamples[:,2]^2 + rsamples[:,3]^2)
-    smooth = kde(rsamples, boundary=bounds)
-    lines!(axis, smooth.x, smooth.density, color=c, label="Simulation")
+    #smooth = kde(rsamples, boundary=bounds)
+    #lines!(axis, smooth.x, smooth.density, color=c, label="Simulation")
+    stephist!(axis, rsamples, bins=binspace, color=c, label="Simulation", normalization=:pdf)
 
     axis.xticks = [bounds[1], bounds[2]]
     #axis.yticks = [axis.yticks[1], axis.yticks[end]]

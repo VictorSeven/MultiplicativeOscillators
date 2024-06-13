@@ -81,15 +81,15 @@ function plot_thermodynamic_limit(axis, colors)
     #Initialize vectors
     av_r = Vector{Float64}(undef, ngammas)
     av_sus = Vector{Float64}(undef, ngammas)
-    gammas = Vector{Float64}(undef, ngammas)
+    gammas = Vector{Float64}(undef, ngammas )
 
     #Read simulation data. There are several simulations
     read_data_simpler!("$data_path/diagrams_$n", ngammas, nsims, av_r, av_sus, gammas)
         
     #Use the theoretical formulas with a finer grid
     teogammas = LinRange(0.0, 0.2, 100)
-    r   = r_oa(teogammas, s2)
-    r6  = r_6th(teogammas, s2)
+    r   = TheoryFormulas.r_oa(teogammas, s2)
+    r6  = TheoryFormulas.r_6th(teogammas, s2)
     #r2c = r_2th_cumulant(teogammas, s2)
     #r2c[teogammas .< 0.1] .= 0
 
@@ -104,7 +104,7 @@ function plot_thermodynamic_limit(axis, colors)
 
 
     #Plot the simulation data
-    scatter!(axis, gammas, av_r, markersize=4, color=:gray, label="Simulation")
+    scatter!(axis, gammas, av_r, markersize=4, color=:black, label="Simulation")
 
 
     
@@ -179,7 +179,7 @@ end
 
 #Start the figure with two axes 
 #fig = Figure(resolution=two_col_size(2*1.618), fontsize=9, figure_padding=7)
-set_theme!(two_col_figure(2*1.618))
+set_theme!(StyleFuncs.two_col_figure(2*1.618))
 fig = Figure(figure_padding=7)
 group = fig[1,1] = GridLayout()
 axs = [Axis(group[1,j], xgridvisible=false, ygridvisible=false) for j=1:2]
@@ -188,7 +188,7 @@ axs = [Axis(group[1,j], xgridvisible=false, ygridvisible=false) for j=1:2]
 #colgap!(group, 10)
 
 #Get the colormap
-colors = met_brew("Egypt")
+colors = ArtsyPalettes.met_brew("Egypt")
 colors = [colors[i] for i in [2,3,1]]
 
 #Plot in each axes
