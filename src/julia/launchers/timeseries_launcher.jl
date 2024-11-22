@@ -5,8 +5,8 @@ include("../core/kuramoto.jl")
 
 #Parameters
 nharm = 30
-t_thermal = 7000.0
-tf = 30000.0
+t_thermal = 500.0
+tf = 10000.0
 sys_size = 1000
 w = 0.1
 s2 = 0.1
