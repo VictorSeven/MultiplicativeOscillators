@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH -J julia	# Job name
+#SBATCH -o julia.%j.out	# Name of stdout output file(%j expands to jobId)
+#SBATCH -e julia.%j.err	# Name of stderr output file(%j expands to jobId)
+#SBATCH --partition=short,metis
+#SBATCH --constraint=metis
+#SBATCH -c 1
+#SBATCH --mem 1500
+#SBATCH --array=0-99
+
+srun julia kuramoto_diagram_launcher.jl 

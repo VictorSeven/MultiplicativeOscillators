@@ -4,7 +4,9 @@ module TheoryFormulas
 using Statistics
 
 #Export some functions to be used
-export r_6th, r_2th_cumulant, r_oa, finite_size_r, integrate_tyulkina, integrate_full
+export r_6th, r_2th_cumulant, r_oa, finite_size_r
+export integrate_tyulkina, diagram_tyulkina
+export integrate_full, integrate_amplitudes, diagram_amplitudes
 
 
 # ----- Simple, direct math formulas ---- 
@@ -85,6 +87,86 @@ function full_system(nharm, w, q, s2, oldz, z, dt)
 end
 
 """
+    amplitude_finitesize(nharm::Integer, sys_size::Integer, q::Float64, s2::Float64, oldr::Float64, r::Float64, dt::Float64)
+
+Definition of the dynamical system up to `nharm` harmonics, assuming a system 
+size `sys_size`, a coupling `q` and noise intensity square `s2`.
+The method also takes the old values `oldz` and rewrites the 
+new `z` ones. It takes the timestep `dt`.
+"""
+function amplitude_finitesize!(nharm::Integer, sys_size::Integer, q::Float64, s2::Float64, oldr::AbstractVector, r::AbstractVector, dt::Float64)
+    k = 1 
+    det = 0.5*k*(q*oldr[1]*(1.0 - oldr[k+1]) -k*s2*oldr[k]) + k^2*s2*(1 + oldr[2k]) / (4 * sys_size * oldr[1])
+    r[k] = oldr[k] + dt * det 
+
+    #From harmonic 2 to nharm-1
+    @simd for k=2:nharm-1
+        det = 0.5*k*(q*oldr[1]*(oldr[k-1] - oldr[k+1]) -k*s2*oldr[k]) 
+        r[k] = oldr[k] + dt * det 
+    end
+
+    #Update the last harmonic by hand to include the closure condition z[nharm+1]=0
+    k = nharm 
+    det = 0.5*k*(q*oldr[1]*oldr[k-1] - k*s2*oldr[k]) 
+    r[k] = oldr[k] + dt * det 
+end
+
+"""
+    integrate_amplitudes(nharms::Integer, sys_size::Integer, q::Float64, s2::Float64; dt=0.01, tf=500.0)
+
+Simple integration of the theory for `nharms` harmonics, 
+a coupling `q` and noise intensity square `s2`. Optionally, one can
+also set the timestep `dt`, and the simulation time `tf`
+"""
+function integrate_amplitudes(nharms::Integer, sys_size::Integer, q::Float64, s2::Float64; dt=0.01, tf=500.0)
+    #Initialize the angles and get Kuramoto order parameter 
+    #and its fluctuations
+    oldr = 0.1*rand(nharms)
+    r = zeros(nharms)
+
+    #Then just integrate everything for the specified time
+    nits = Int(tf/dt)
+    for i=1:nits
+        amplitude_finitesize!(nharms, sys_size, q, s2, oldr, r, dt) 
+        oldr, r = r, oldr
+    end
+
+    #Return the result
+    return oldr 
+end
+
+"""
+    diagram_amplitudes(nharms::Integer, sys_size::Integer, q0::Float64, qf::Float64, nq::Integer, s2::Float64, path::String; tf=5000.0)
+
+Generates a phase diagram using the new theory including FS corrections at size `sys_size`.
+From coupling `q0` to `qf` making `nq` subdivisions, and square noise intensity `s2`. 
+Results are then stored in `path`. One can also specify the time for the integration, 
+We set `tf=5000.0` to ensure thermalization
+"""
+function diagram_amplitudes(nharms::Integer, sys_size::Integer, q0::Float64, qf::Float64, nq::Integer, s2::Float64, path::String; tf=5000.0, dt=0.01, writetofile=true)
+    #Open the file and iterate over the couplings
+    if writetofile 
+        open(path, "w") do output
+            for q in LinRange(q0, qf, nq)
+                r = integrate_amplitudes(nharms, sys_size, q, s2; dt=dt, tf=tf)
+                write(output, "$q $(r[1])\n")
+            end
+        end
+    else
+        rvalues = zeros(nq)
+        i = 1
+        qlist = LinRange(q0, qf, nq)
+        for q in qlist 
+            rk = integrate_amplitudes(nharms, sys_size, q, s2; dt=dt, tf=tf)
+            rvalues[i] = rk[1]
+            i += 1
+        end
+        return qlist, rvalues
+    end
+end
+
+
+"""
     tyulkina(w::Float64, q::Float64, oldz::Float64, oldx::Float64, dt::Float64)
 
 Definition of the dynamical system representing the Kuramoto order
@@ -127,6 +209,7 @@ function integrate_tyulkina(w, q, s2; dt=0.01, n=100000, tf=500.0)
     return abs(oldz)
 end
 
+
 """
     diagram_tyulkina(q0::Float64, qf::Float64, nq::Int, w::Float64, s2::Float64, path::String; tf=5000.0)    
 
@@ -136,14 +219,12 @@ from coupling `q0` to `qf` making `nq` subdivisions, given a frequency
 One can also specify the time for the integration, 
 we set `tf=5000.0` to ensure thermalization
 """
-function diagram_tyulkina(q0, qf, nq, w, s2, path; tf=5000.0)
-    #Open the file and iterate over the couplings
-    open(path, "w") do output
-        for q in LinRange(q0, qf, nq)
-            r = integrate_tyulkina_simple(w, q, s2; tf=tf)
-            write(output, "$q $r\n")
-        end
+function diagram_tyulkina(qspace, w, s2; tf=5000.0)
+    r = Vector{Float64}(undef, length(qspace))
+    for (i,q) in enumerate(qspace) 
+        r[i] = integrate_tyulkina(w, q, s2; tf=tf)
     end
+    return r
 end
 
 
@@ -178,18 +259,5 @@ function timeseries_tyulkina(w, q, s2, outputpath; dt=0.01, tf=1000.0)
     end
 end
 
-
-
-#TODO make the angle check!
-function check_angles(w, q, s2; dt=0.01, tf=1000.0, nharm=30)
-    angles = 2π*rand(100000)
-    oldz = [mean(exp.(im*angles*k)) for k=1:nharm]
-    z = Vector{ComplexF64}(undef, nharm)
-    for t=0.0:dt:tf 
-        full_system(nharm, w, q, s2, oldz, z, dt)
-        oldz, z = z, oldz 
-    end
-    return angle.(oldz) 
-end
 
 end

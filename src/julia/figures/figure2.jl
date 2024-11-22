@@ -134,7 +134,7 @@ fig = Figure(figure_padding=2)
 
 ax = Axis(fig[1,1])
 
-ngammas = 40 
+ngammas = 99 
 av_r = Vector{Float64}(undef, ngammas)
 av_sus = Vector{Float64}(undef, ngammas)
 var_r = Vector{Float64}(undef, ngammas)
@@ -145,26 +145,28 @@ nsims = 100
 colors = ArtsyPalettes.met_brew("Isfahan1")
 color = colors[5]
 
-data_kuramoto = "../../../data/diagrams/diagrams_100000"
-
-read_data_simpler!(data_kuramoto, ngammas, nsims, av_r, av_sus, var_r, gammas)
-lines!(ax, gammas, var_r, color=:black, label="Simulation")
-
+#Plot the mesoscopic data
 data_meso     = "../../../data/diagrams/30harms_amplitude"
 
-ngammas = 99 
+
+read_data_simpler!(data_meso, ngammas, nsims, av_r, av_sus, var_r, gammas)
+lines!(ax, gammas, av_sus, color=color, label="Eqs. (9)")
+
+#Plot the Kuramoto simulations...
+ngammas = 43 
 av_r = Vector{Float64}(undef, ngammas)
 av_sus = Vector{Float64}(undef, ngammas)
 var_r = Vector{Float64}(undef, ngammas)
 gammas = Vector{Float64}(undef, ngammas)
 nsims = 100 
+data_kuramoto = "../../../data/diagrams/kuramoto_julia_bien"
 
-read_data_simpler!(data_meso, ngammas, nsims, av_r, av_sus, var_r, gammas)
-lines!(ax, gammas, var_r, color=color, label="Eqs. (10)")
+read_data_simpler!(data_kuramoto, ngammas, nsims, av_r, av_sus, var_r, gammas)
+scatter!(ax, gammas, av_sus, color=:black, label="Simulation")
 
-ax.yticks = [0.0, 1.5e-4] 
+ax.yticks = [0.0, 4e-4] 
 
-xlims!(ax, 0.08, 0.12)
+xlims!(ax, 0.075, 0.125)
 axislegend(ax, position=(0.9, 0.9))
 
 ax.xlabel = "J"

@@ -13,8 +13,8 @@ using .StyleFuncs
 
 function plot_distributions!(q, axis, data_path, bounds, colors)
 
-    filenames = ["additive", "amplitude"]
-    labels = ["Additive only", "Eqs. (10)"]
+    filenames = ["additive_noFS", "additive", "amplitude", "kuramoto"]
+    labels = ["Additive", "Add + FS drift", "Eqs. (9)", "Simulation"]
 
     q2d = @sprintf("%.2f", q)
 
@@ -30,6 +30,7 @@ function plot_distributions!(q, axis, data_path, bounds, colors)
         stephist!(axis, abs.(rsamples[:,2]), bins=binspace, color=c, label=lab, normalization=:pdf)
     end
 
+    #=
     name = "microscopic" 
     c = :black 
     rsamples = readdlm("$(data_path)/microscopic_$(q2d)")
@@ -37,6 +38,7 @@ function plot_distributions!(q, axis, data_path, bounds, colors)
     #smooth = kde(rsamples, boundary=bounds)
     #lines!(axis, smooth.x, smooth.density, color=c, label="Simulation")
     stephist!(axis, rsamples, bins=binspace, color=c, label="Simulation", normalization=:pdf)
+    =#
 
     axis.xticks = [bounds[1], bounds[2]]
     #axis.yticks = [axis.yticks[1], axis.yticks[end]]
@@ -45,7 +47,7 @@ function plot_distributions!(q, axis, data_path, bounds, colors)
 end
 
 
-set_theme!(StyleFuncs.one_col_figure(2.5))
+set_theme!(StyleFuncs.one_col_figure(3.0))
 fig = Figure(figure_padding=(2, 7, 2, 1), backgroundcolor=:transparent)
 group = fig[1,1] = GridLayout()
 axs = [Axis(group[2,j], xgridvisible=false, ygridvisible=false) for j=1:3]
@@ -55,7 +57,8 @@ hidespines!.(axs, :t, :r)
 data_path = "../../../data/series4dists/series_1000"
 
 colors = ArtsyPalettes.met_brew("Isfahan1")
-colors = [colors[i] for i in [2, 5]]
+colors = [colors[i] for i in [2, 4, 6]]
+append!(colors, ["#000000"])
 plot_distributions!(0.05, axs[1], data_path, (0., 0.2), colors)
 plot_distributions!(0.1, axs[2], data_path, (0., 0.5), colors)
 plot_distributions!(0.2, axs[3], data_path, (0.75, 0.9), colors)
@@ -64,7 +67,7 @@ axs[2].xlabel = "R"
 axs[2].xlabelpadding = -4.
 axs[1].ylabel = "p(R)"
 
-leg = Legend(group[1,1:3], axs[1], position=(0., 0.), orientation=:horizontal, backgroundcolor=:transparent)
+leg = Legend(group[1,1:3], axs[1], position=(0., 0.), orientation=:horizontal, colgap=5, backgroundcolor=:transparent)
 #Label(group[2, 1, Top()], "Title")
 
 
