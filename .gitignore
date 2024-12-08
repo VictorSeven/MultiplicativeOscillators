@@ -37,6 +37,7 @@
 
 # Folder with my own notes on the project
 notes/
+paper/
 
 #Do not upload data, nor graphs
 data/
@@ -44,6 +45,7 @@ data/
 
 #Do not upload notebooks
 src/python/exploratory*
+src/julia/figures/*.ipynb
 
 #Executables in the cluster are generated here. Keep them away
 src/python/launchers/bin

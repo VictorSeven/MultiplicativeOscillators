@@ -10,7 +10,7 @@ s2 = 0.1
 filename = ARGS[1]
 
 #Run the program
-Kuramoto.get_allkd(N, q, s2, t_thermal, tf, filename)
+Kuramoto.get_allkd(sys_size, q, s2, t_thermal, tf, filename)
 
 
 

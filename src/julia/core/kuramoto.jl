@@ -267,6 +267,7 @@ function get_allkd(N::Integer, q::Float64, s2::Float64, trelax::Float64, tf::Flo
         if (i % nsample == 1)
             avzk .+= zk 
             measurements += 1
+            println("yay")
         end
     end
 
