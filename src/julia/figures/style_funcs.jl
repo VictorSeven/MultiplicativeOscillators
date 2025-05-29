@@ -11,20 +11,20 @@ function mm_to_inches(mm)
     return mm * 3.93701
 end
 
-#Automatic axes labelling
-function label_axes(axes; pos=[0.05, 0.9])
-    if length(size(pos)) > 1
-        alphabet = "abcdefghijklmnopqrstuvwxyz"
+function label_axes(axes; pos = [0.05, 0.9])
+    alphabet = "abcdefghijklmnopqrstuvwxyz"
+    if length(size(pos)) == 1
         for (i,ax) in enumerate(axes)
-            text!(ax, pos[i,1], fontsize=10, pos[i,2]; text="($(alphabet[i:i]))", space=:relative)
+            text!(ax, pos[i], 0.9; fontsize=10, text="($(alphabet[i:i]))", space=:relative)
         end
     else
-        alphabet = "abcdefghijklmnopqrstuvwxyz"
         for (i,ax) in enumerate(axes)
-            text!(ax, pos[1], pos[2]; fontsize=10, text="($(alphabet[i:i]))", space=:relative)
+            text!(ax, pos[i,1], pos[i,2]; fontsize=10, text="($(alphabet[i:i]))", space=:relative)
         end
     end
 end
+
+
 
 # --- A theme adequate for a paper figure
 
@@ -133,9 +133,11 @@ slide_theme = Theme(
     ), 
 
     #Set markersize to real size
-    Scatter=(markersize=4.0,),
+    Scatter=(markersize=12.0,),
 
     Lines=(linewidth=3.0,),
+
+    StepHist=(linewidth=3.0,),
 
     #Customize legend
     Legend=(

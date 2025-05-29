@@ -1,4 +1,5 @@
 module ArtsyPalettes
+using CairoMakie 
 
 export list_available, is_colorblindfriendly, met_brew
 
@@ -112,4 +113,6 @@ met_brewer = Dict(
     function is_colorblindfriendly(name::String)
         return met_brewer[name]["colorblind"]
     end
+    
+    
 end

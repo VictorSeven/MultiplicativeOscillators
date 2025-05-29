@@ -10,7 +10,11 @@ using .ArtsyPalettes
 using .StyleFuncs
 
 
-function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, var_r, gammas; ncols=4)
+"""
+Reads the data at data_path to obtain mean and variance stored in the files
+"""
+function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, var_r, gammas)
+
     #Initialize vectors
     av_r   .= 0. 
     var_r  .= 0. 
@@ -36,11 +40,11 @@ function read_data_simpler!(data_path, ngammas, nsims, av_r, av_sus, var_r, gamm
     av_sus ./= nsims
 end
 
+"""
+Compute the derivative of the function y(x) which has been sampled in discrete steps. The implementation here has
+been copied from Numpy's gradient function (centered finite differences) with boundary conditions having first order.
+"""
 function numerical_derivative(y, x)
-    """
-    Compute the derivative of the function y(x) which has been sampled in discrete steps. The implementation here has
-    been copied from Numpy's gradient function (centered finite differences) with boundary conditions having first order.
-    """
 
     #Create target vector
     n = length(x)
@@ -72,7 +76,11 @@ function numerical_derivative(y, x)
     return derivs
 end
 
+"""
+Plot the effective exponent at axis ax via the definition of critical exponent, dlog(susc)/dlogq 
+"""
 function plot_effective_exponent(ax, q, susc)
+
     #Get the maximum of the susceptibility
     peak, halfpoint = findmax(susc) 
     rc = q[halfpoint] 
@@ -108,8 +116,7 @@ function plot_effective_exponent(ax, q, susc)
     p0 = [0., 1., 0.]
     fit = curve_fit(quad2fit, x[begin+offset:end], y[begin+offset:end], p0)
     p, err = fit.param, estimate_errors(fit, 0.68)
-    #println("$(p[1]) ± $(err[1])")
-    #println("$(p[2]) ± $(err[2])")
+
     lines!(ax, x, quad2fit(x, p), label="γ' = $(round(p[2], sigdigits=4)) ± $(round(err[2], sigdigits=1))")
 
     #Make the axes look nice
@@ -125,14 +132,12 @@ end
 
 
 #Start the figure with two axes 
-#fig = Figure(resolution=two_col_size(2*1.618), fontsize=9, figure_padding=7)
 set_theme!(StyleFuncs.one_col_figure(1.5))
 fig = Figure(figure_padding=2)
+axs = [Axis(fig[j,1]) for j=1:2]
 
 #Initialize the vectors we'll need
-
-
-ax = Axis(fig[1,1])
+ax = axs[1] 
 
 ngammas = 99 
 av_r = Vector{Float64}(undef, ngammas)
@@ -150,7 +155,7 @@ data_meso     = "../../../data/diagrams/30harms_amplitude"
 
 
 read_data_simpler!(data_meso, ngammas, nsims, av_r, av_sus, var_r, gammas)
-lines!(ax, gammas, av_sus, color=color, label="Eqs. (9)")
+lines!(ax, gammas, av_sus, color=color, label="Eqs. (8)")
 
 #Plot the Kuramoto simulations...
 ngammas = 43 
@@ -174,7 +179,7 @@ ax.ylabel = "χ/N"
 
 
 
-ax = Axis(fig[2,1])
+ax = axs[2] 
 
 #Simulation data
 ngammas = 100
@@ -197,6 +202,10 @@ colors = [colors[i] for i in [2,3]]
 plot_effective_exponent(ax, gammas, av_sus)
 axislegend(ax, position=(0.05, 1.5), padding=(0,0, 0,0))
 
+#Add axes labels
+xlabel = 0.94
+ylabel = 0.75
+StyleFuncs.label_axes(axs, pos=[xlabel ylabel; xlabel ylabel])
 
 #Save the figure
 save("figure2.pdf", fig, pt_per_unit = 1)
